@@ -1,0 +1,505 @@
+# ArkTS 语法速查
+
+## 目录
+
+1. [装饰器](#装饰器)
+2. [类型系统](#类型系统)
+3. [UI 描述](#ui-描述)
+4. [生命周期](#生命周期)
+5. [状态管理最佳实践](#状态管理最佳实践)
+6. [常用工具函数](#常用工具函数)
+
+---
+
+## 装饰器
+
+### @Component
+
+标记自定义组件，必须配合 `struct` 使用。
+
+```typescript
+@Component
+struct MyComponent {
+  build() {
+    // UI 描述
+  }
+}
+```
+
+### @Entry
+
+标记组件为页面入口，每个页面有且仅有一个 `@Entry`。
+
+```typescript
+@Entry
+@Component
+struct Index {
+  build() { }
+}
+```
+
+### @State
+
+组件内部状态，改变时触发 UI 刷新。
+
+```typescript
+@Component
+struct Counter {
+  @State count: number = 0
+
+  build() {
+    Button(`Count: ${this.count}`)
+      .onClick(() => this.count++)
+  }
+}
+```
+
+**限制**：不支持 Object、Array 的深层监听；复杂对象用 `@Observed` + `@ObjectLink`。
+
+### @Prop
+
+父 → 子单向数据同步，值拷贝。
+
+```typescript
+// 父组件
+@Entry @Component
+struct Parent {
+  @State title: string = 'Hello'
+
+  build() {
+    Child({ title: this.title })
+  }
+}
+
+// 子组件
+@Component
+struct Child {
+  @Prop title: string  // 单向同步
+
+  build() {
+    Text(this.title)
+  }
+}
+```
+
+### @Link
+
+父子双向同步，必须通过 `$` 传递引用。
+
+```typescript
+// 父组件
+@Entry @Component
+struct Parent {
+  @State count: number = 0
+
+  build() {
+    Child({ count: $count })  // $ 传递引用
+  }
+}
+
+// 子组件
+@Component
+struct Child {
+  @Link count: number  // 双向同步
+
+  build() {
+    Button(`+1`).onClick(() => this.count++)
+  }
+}
+```
+
+### @Provide / @Consume
+
+跨层级双向同步，替代层层传递 `@Link`。
+
+```typescript
+@Entry @Component
+struct GrandParent {
+  @Provide theme: string = 'dark'
+
+  build() {
+    Parent()
+  }
+}
+
+@Component
+struct Parent {
+  build() {
+    Child()  // 无需传递 theme
+  }
+}
+
+@Component
+struct Child {
+  @Consume theme: string  // 自动匹配 @Provide
+
+  build() {
+    Text(this.theme)
+  }
+}
+```
+
+### @Watch
+
+监听状态变化，执行回调。
+
+```typescript
+@State @Watch('onCountChange') count: number = 0
+
+onCountChange() {
+  console.info(`count changed to ${this.count}`)
+}
+```
+
+### @Observed / @ObjectLink
+
+深层响应式对象（Class 实例）。
+
+```typescript
+@Observed
+class TodoItem {
+  title: string = ''
+  done: boolean = false
+}
+
+@Component
+struct TodoItemComponent {
+  @ObjectLink item: TodoItem  // 深层监听
+
+  build() {
+    Row() {
+      Text(this.item.title)
+      Checkbox().select(this.item.done)
+        .onChange((checked) => { this.item.done = checked })
+    }
+  }
+}
+```
+
+### @Builder
+
+轻量 UI 复用函数，内部可引用组件状态。
+
+```typescript
+@Component
+struct MyComponent {
+  @State label: string = 'Click'
+
+  // 全局 Builder
+  @Builder
+  buildHeader(title: string) {
+    Text(title).fontSize(20).fontWeight(FontWeight.Bold)
+  }
+
+  build() {
+    Column() {
+      this.buildHeader(this.label)
+    }
+  }
+}
+```
+
+### @BuilderParam
+
+允许父组件传入自定义 Builder。
+
+```typescript
+@Component
+struct Container {
+  @BuilderParam content: () => void
+
+  build() {
+    Column() {
+      this.content()
+    }
+  }
+}
+
+// 使用
+Container() {
+  Text('Custom content')
+}
+```
+
+### @Extend
+
+扩展原生组件样式，不支持传参（无参）。
+
+```typescript
+@Extend(Text)
+function priceText() {
+  .fontSize(18)
+  .fontColor('#FF0000')
+  .fontWeight(FontWeight.Bold)
+}
+
+// 使用
+Text('¥99.9').priceText()
+```
+
+### @Styles
+
+抽取通用样式，支持全局和组件内。
+
+```typescript
+// 组件内
+@Component
+struct MyComponent {
+  @Styles
+  cardStyle() {
+    .backgroundColor('#FFFFFF')
+    .borderRadius(12)
+    .padding(16)
+    .shadow({ radius: 4, color: '#00000020' })
+  }
+
+  build() {
+    Column() { }
+      .cardStyle()
+  }
+}
+
+// 全局（组件外）
+@Styles
+function globalCard() {
+  .backgroundColor('#FFFFFF')
+  .borderRadius(8)
+  .padding(12)
+}
+```
+
+---
+
+## 类型系统
+
+### ArkTS vs TypeScript 差异
+
+| 特性 | TypeScript | ArkTS |
+|------|-----------|-------|
+| `any` | ✅ | ❌ 禁止 |
+| `enum` | ✅ | ❌ 禁止（用 `const` 对象或 union） |
+| `prototype` | ✅ | ❌ 禁止 |
+| `arguments` | ✅ | ❌ 禁止 |
+| `for...in` | ✅ | ❌ 禁止 |
+| 动态属性 `obj[key]` | ✅ | ⚠️ 有限支持 |
+| `Object.keys()` | ✅ | ❌ 用 `Object.entries()` |
+| `as` 类型断言 | ✅ | ⚠️ 仅允许 `as string` 等 |
+| `!=` / `==` | ✅ | ❌ 必须用 `!==` / `===` |
+
+### 常用类型
+
+```typescript
+// 基础
+let num: number = 0
+let str: string = ''
+let flag: boolean = false
+
+// 联合类型
+type Status = 'loading' | 'success' | 'error'
+
+// 接口
+interface IUserData {
+  id: number
+  name: string
+  avatar?: string  // 可选
+}
+
+// 数组
+let list: IUserData[] = []
+
+// Record
+let cache: Record<string, string> = {}
+
+// Promise
+async function fetchData(): Promise<IUserData> {
+  const res = await http.request(...)
+  return res.result as IUserData
+}
+
+// 回调类型
+type OnChange = (value: string) => void
+```
+
+### 枚举替代方案
+
+```typescript
+// ❌ 禁止
+// enum Direction { Up, Down, Left, Right }
+
+// ✅ 推荐
+const Direction = {
+  UP: 'Up',
+  DOWN: 'Down',
+  LEFT: 'Left',
+  RIGHT: 'Right'
+} as const
+type Direction = typeof Direction[keyof typeof Direction]
+```
+
+---
+
+## UI 描述
+
+### 条件渲染
+
+```typescript
+build() {
+  Column() {
+    if (this.isLoading) {
+      LoadingProgress()
+    } else if (this.dataList.length > 0) {
+      List() { /* ... */ }
+    } else {
+      Text('暂无数据')
+    }
+  }
+}
+```
+
+### 循环渲染
+
+```typescript
+@State items: string[] = ['A', 'B', 'C']
+
+build() {
+  List() {
+    ForEach(this.items, (item: string, index?: number) => {
+      ListItem() {
+        Text(`${index}: ${item}`)
+      }
+    }, (item: string) => item)  // keyGenerator
+  }
+}
+```
+
+### 转场动画
+
+```typescript
+if (this.showDetail) {
+  // 进入：从右侧滑入
+  // 退出：向右侧滑出
+  Text('Detail').transition(TransitionEffect.translate({ x: 1000 }))
+}
+
+// 调用
+this.showDetail = true
+animateTo({ duration: 300 }, () => {
+  this.showDetail = true
+})
+```
+
+---
+
+## 生命周期
+
+### 组件生命周期
+
+| 方法 | 说明 |
+|------|------|
+| `aboutToAppear()` | 组件即将出现，可做初始化 |
+| `aboutToDisappear()` | 组件即将销毁，清理资源 |
+| `onPageShow()` | 页面显示时（仅 `@Entry`） |
+| `onPageHide()` | 页面隐藏时（仅 `@Entry`） |
+| `onBackPress()` | 返回键按下（仅 `@Entry`） |
+
+```typescript
+@Entry
+@Component
+struct Index {
+  aboutToAppear() {
+    console.info('Index aboutToAppear')
+  }
+
+  aboutToDisappear() {
+    console.info('Index aboutToDisappear')
+  }
+
+  onPageShow(): void {
+    console.info('Page show')
+  }
+
+  onPageHide(): void {
+    console.info('Page hide')
+  }
+
+  onBackPress(): boolean {
+    console.info('Back pressed')
+    return false  // false = 默认行为，true = 拦截返回
+  }
+
+  build() { }
+}
+```
+
+---
+
+## 状态管理最佳实践
+
+### 选择决策树
+
+```
+需要跨组件共享？
+├── 是 → 跨多少层？
+│   ├── 1 层（父子）→ @Link（双向）或 @Prop（单向）
+│   └── 多层（祖孙）→ @Provide + @Consume
+└── 否 → 仅组件内 → @State
+```
+
+### 复杂对象
+
+```
+对象需要深层响应？
+├── 是 → @Observed class + @ObjectLink
+└── 否 → @State + 整体替换
+```
+
+### 全局状态
+
+```typescript
+// AppStorage（应用级）
+AppStorage.setOrCreate('token', '')
+AppStorage.get<string>('token')
+// 组件内使用
+@StorageLink('token') token: string
+@StorageProp('token') token: string  // 只读
+
+// LocalStorage（页面级）
+let storage = new LocalStorage()
+storage.setOrCreate('count', 0)
+// 组件内使用
+@LocalStorageLink('count') count: number
+@LocalStorageProp('count') count: number  // 只读
+```
+
+---
+
+## 常用工具函数
+
+```typescript
+import { promptAction } from '@kit.ArkUI'
+
+// Toast
+promptAction.showToast({ message: '操作成功', duration: 2000 })
+
+// AlertDialog
+promptAction.showDialog({
+  title: '提示',
+  message: '确定删除？',
+  buttons: [{ text: '取消', color: '#999999' }, { text: '确定', color: '#FF0000' }]
+})
+
+// 格式化日期
+import { intl } from '@kit.LocalizationKit'
+let dateTimeFmt = new intl.DateTimeFormat('zh-CN', {
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit'
+})
+dateTimeFmt.format(new Date())
+
+// 延迟执行
+setTimeout(() => { }, 1000)
+
+// JSON 操作
+let parsed = JSON.parse<IUserData>(jsonStr)
+let jsonStr = JSON.stringify(obj)
+```

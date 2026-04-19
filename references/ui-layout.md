@@ -1,0 +1,457 @@
+# ArkUI 布局最佳实践
+
+## 目录
+
+1. [布局容器概览](#布局容器概览)
+2. [Column / Row](#column--row)
+3. [List](#list)
+4. [Grid](#grid)
+5. [Scroll / Tabs](#scroll--tabs)
+6. [弹窗与浮层](#弹窗与浮层)
+7. [尺寸与间距规范](#尺寸与间距规范)
+8. [性能优化](#性能优化)
+
+---
+
+## 布局容器概览
+
+| 容器 | 适用场景 | 核心属性 |
+|------|---------|---------|
+| `Column` | 垂直排列 | `.space()`, `.justifyContent()`, `.alignItems()` |
+| `Row` | 水平排列 | 同上 |
+| `Stack` | 层叠定位 | `.alignContent()` |
+| `Flex` | 弹性布局 | `.direction()`, `.wrap()`, `.justifyContent()` |
+| `List` | 滚动列表 | `.lazyForEach()`, `.cachedCount()` |
+| `Grid` | 网格布局 | `.columnsTemplate()`, `.rowsTemplate()` |
+| `Scroll` | 可滚动区域 | `.scrollable()`, `.scrollBar()` |
+| `Tabs` | 标签页 | `.tabBar()`, `.scrollable()` |
+| `Swiper` | 轮播 | `.autoPlay()`, `.interval()` |
+| `WaterFlow` | 瀑布流 | `.columnsTemplate()`, `.layoutDirection()` |
+
+---
+
+## Column / Row
+
+### Column 垂直布局
+
+```typescript
+Column() {
+  Text('标题').fontSize(20).fontWeight(FontWeight.Bold)
+  Text('描述内容').fontSize(14).fontColor('#666666')
+  Button('操作')
+}
+.width('100%')
+.padding(16)
+.backgroundColor('#FFFFFF')
+.borderRadius(12)
+```
+
+### Row 水平布局
+
+```typescript
+Row() {
+  Image($r('app.media.icon')).width(40).height(40).borderRadius(20)
+  Column({ space: 4 }) {
+    Text('用户名').fontSize(16).fontWeight(FontWeight.Medium)
+    Text('一句话简介').fontSize(12).fontColor('#999999')
+  }
+  .alignItems(HorizontalAlign.Start)
+  .layoutWeight(1)  // 占据剩余空间
+  Blank()
+  Image($r('app.media.arrow_right')).width(16).height(16)
+}
+.width('100%')
+.padding(12)
+.backgroundColor('#FFFFFF')
+.borderRadius(8)
+```
+
+### 等分布局
+
+```typescript
+Row({ space: 12 }) {
+  Text('左').layoutWeight(1).textAlign(TextAlign.Center).backgroundColor('#F0F0F0')
+  Text('中').layoutWeight(1).textAlign(TextAlign.Center).backgroundColor('#F0F0F0')
+  Text('右').layoutWeight(1).textAlign(TextAlign.Center).backgroundColor('#F0F0F0')
+}
+.width('100%')
+.padding(16)
+
+// 或者用 justifyContent
+Row() {
+  Text('左').width('30%')
+  Text('中').width('30%')
+  Text('右').width('30%')
+}
+.width('100%')
+.justifyContent(FlexAlign.SpaceEvenly)
+```
+
+### space 间距
+
+```typescript
+// Column 内子元素间距
+Column({ space: 8 }) {
+  Text('A')
+  Text('B')
+  Text('C')
+}
+
+// Row 内子元素间距
+Row({ space: 12 }) {
+  Text('X')
+  Text('Y')
+  Text('Z')
+}
+```
+
+---
+
+## List
+
+### 基础列表
+
+```typescript
+@State dataList: string[] = ['项目A', '项目B', '项目C', '项目D']
+
+build() {
+  List({ space: 10 }) {
+    ForEach(this.dataList, (item: string, index?: number) => {
+      ListItem() {
+        Text(item).width('100%').padding(16).backgroundColor('#FFFFFF')
+      }
+      .borderRadius(8)
+    }, (item: string, index?: number) => `${item}_${index}`)
+  }
+  .width('100%')
+  .layoutWeight(1)
+  .padding({ left: 16, right: 16 })
+  .divider({ strokeWidth: 0.5, color: '#EEEEEE' })
+}
+```
+
+### 分组列表
+
+```typescript
+interface IGroup {
+  title: string
+  items: string[]
+}
+
+@State groups: IGroup[] = [
+  { title: '分组一', items: ['A1', 'A2'] },
+  { title: '分组二', items: ['B1', 'B2', 'B3'] }
+]
+
+build() {
+  List() {
+    ForEach(this.groups, (group: IGroup) => {
+      ListItemGroup({ header: this.groupHeader(group.title) }) {
+        ForEach(group.items, (item: string) => {
+          ListItem() {
+            Text(item).width('100%').padding(16).backgroundColor('#FFFFFF')
+          }
+        }, (item: string) => item)
+      }
+    }, (group: IGroup) => group.title)
+  }
+
+  @Builder
+  groupHeader(title: string) {
+    Text(title).fontSize(14).fontColor('#666666').padding({ left: 16, top: 12, bottom: 4 })
+  }
+}
+```
+
+### 懒加载（大数据量）
+
+```typescript
+import { LazyForEach } from '@kit.ArkUI'
+
+class MyDataSource implements IDataSource {
+  private dataArray: string[] = []
+  private listeners: DataChangeListener[] = []
+
+  constructor(data: string[]) {
+    this.dataArray = data
+  }
+
+  totalCount(): number {
+    return this.dataArray.length
+  }
+
+  getData(index: number): string {
+    return this.dataArray[index]
+  }
+
+  registerDataChangeListener(listener: DataChangeListener): void {
+    this.listeners.push(listener)
+  }
+
+  unregisterDataChangeListener(listener: DataChangeListener): void {
+    const pos = this.listeners.indexOf(listener)
+    if (pos >= 0) {
+      this.listeners.splice(pos, 1)
+    }
+  }
+}
+
+@Entry
+@Component
+struct LazyListDemo {
+  private dataSource: MyDataSource = new MyDataSource(Array.from({ length: 1000 }, (_, i) => `Item ${i}`))
+
+  build() {
+    List() {
+      LazyForEach(this.dataSource, (item: string) => {
+        ListItem() {
+          Text(item).width('100%').height(60).textAlign(TextAlign.Center)
+        }
+      }, (item: string) => item)
+    }
+    .cachedCount(5)  // 缓存屏幕外 5 个 item
+  }
+}
+```
+
+### 下拉刷新 / 上拉加载
+
+```typescript
+@Entry
+@Component
+struct RefreshList {
+  @State dataList: string[] = ['A', 'B', 'C']
+  private refreshing: boolean = false
+
+  build() {
+    List({ space: 10 }) {
+      ForEach(this.dataList, (item: string) => {
+        ListItem() {
+          Text(item).width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(8)
+        }
+      })
+    }
+    .width('100%')
+    .layoutWeight(1)
+    .onReachEnd(() => {
+      // 上拉加载更多
+      this.dataList.push(...['D', 'E', 'F'])
+    })
+    .refreshEffect(true)  // 允许下拉刷新
+    .onRefreshing(() => {
+      // 下拉刷新逻辑
+      setTimeout(() => {
+        this.dataList = ['A', 'B', 'C']  // 重置数据
+      }, 1000)
+    })
+  }
+}
+```
+
+---
+
+## Grid
+
+### 基础网格
+
+```typescript
+Grid() {
+  ForEach(this.items, (item: string) => {
+    GridItem() {
+      Text(item).width('100%').height(60).textAlign(TextAlign.Center)
+        .backgroundColor('#FFFFFF').borderRadius(8)
+    }
+  })
+}
+.columnsTemplate('1fr 1fr 1fr')  // 三列等宽
+.rowsGap(10)
+.columnsGap(10)
+.width('100%')
+.padding(16)
+```
+
+### 自适应列数
+
+```typescript
+Grid() {
+  ForEach(this.items, (item: string) => {
+    GridItem() {
+      Text(item).width('100%').height(100).backgroundColor('#F5F5F5')
+    }
+  })
+}
+.columnsGap(10)
+.rowsGap(10)
+.maxCount(3)    // 最大 3 列
+.minCount(2)    // 最小 2 列
+.layoutDirection(GridDirection.Row)
+```
+
+---
+
+## Scroll / Tabs
+
+### Scroll
+
+```typescript
+Scroll() {
+  Column() {
+    Text('长内容区域').width('100%').height(800).backgroundColor('#F0F0F0')
+  }
+}
+.scrollable(ScrollDirection.Vertical)  // 垂直滚动
+.scrollBar(BarState.Auto)              // 滚动条自动显隐
+.edgeEffect(EdgeEffect.Spring)         // iOS 风格回弹
+```
+
+### Tabs
+
+```typescript
+@Entry
+@Component
+struct TabsDemo {
+  @State currentIndex: number = 0
+
+  build() {
+    Tabs({ barPosition: BarPosition.Start, index: this.currentIndex }) {
+      TabContent() { Text('首页内容') }.tabBar(this.tabBuilder('首页', 0))
+      TabContent() { Text('分类内容') }.tabBar(this.tabBuilder('分类', 1))
+      TabContent() { Text('我的内容') }.tabBar(this.tabBuilder('我的', 2))
+    }
+    .onChange((index: number) => { this.currentIndex = index })
+  }
+
+  @Builder
+  tabBuilder(title: string, index: number) {
+    Column() {
+      Text(title)
+        .fontSize(this.currentIndex === index ? 16 : 14)
+        .fontWeight(this.currentIndex === index ? FontWeight.Bold : FontWeight.Normal)
+        .fontColor(this.currentIndex === index ? '#007DFF' : '#999999')
+    }
+    .width('100%')
+    .padding({ top: 8, bottom: 8 })
+    .alignItems(HorizontalAlign.Center)
+  }
+}
+```
+
+---
+
+## 弹窗与浮层
+
+### CustomDialog
+
+```typescript
+@CustomDialog
+struct ConfirmDialog {
+  controller: CustomDialogController
+  title: string = '提示'
+  message: string = ''
+  onConfirm?: () => void
+
+  build() {
+    Column({ space: 12 }) {
+      Text(this.title).fontSize(18).fontWeight(FontWeight.Bold)
+      Text(this.message).fontSize(14).fontColor('#666666')
+      Row({ space: 12 }) {
+        Button('取消').onClick(() => this.controller.close())
+          .backgroundColor('#F5F5F5').fontColor('#333333')
+        Button('确定').onClick(() => {
+          this.onConfirm?.()
+          this.controller.close()
+        })
+      }
+    }
+    .padding(24)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(16)
+  }
+}
+
+// 使用
+let dialog = new CustomDialogController({
+  builder: ConfirmDialog({ title: '删除确认', message: '确定删除该项？', onConfirm: () => {} })
+})
+dialog.open()
+```
+
+### 半屏模态
+
+```typescript
+@Entry
+@Component
+struct SheetDemo {
+  @State showSheet: boolean = false
+
+  build() {
+    Button('打开半屏').onClick(() => { this.showSheet = true })
+      .bindSheet($$this.showSheet, this.sheetBuilder(), {
+        height: SheetSize.MEDIUM,
+        showClose: true,
+        dragBar: true,
+        backgroundColor: '#FFFFFF'
+      })
+  }
+
+  @Builder
+  sheetBuilder() {
+    Column({ space: 16 }) {
+      Text('选择操作').fontSize(18).fontWeight(FontWeight.Bold)
+      // ...内容
+    }
+    .padding(24)
+  }
+}
+```
+
+---
+
+## 尺寸与间距规范
+
+### 推荐间距
+
+| 场景 | 间距 |
+|------|------|
+| 页面内边距 | 16px |
+| 卡片内边距 | 16px |
+| 列表项间距 | 8-12px |
+| 元素内部间距 | 4-8px |
+| 按钮最小高度 | 44px |
+| 点击热区最小 | 44x44px |
+| 圆角 - 卡片 | 12px |
+| 圆角 - 按钮 | 8px |
+| 圆角 - 头像 | 半径 |
+| 圆角 - 输入框 | 8px |
+
+### 响应式尺寸
+
+```typescript
+// 使用 vp（虚拟像素，自动适配不同屏幕密度）
+.width('100%')
+.height(44)
+.padding(16)
+.fontSize(14)
+
+// 获取屏幕尺寸
+import { display } from '@kit.ArkUI'
+let displayClass = display.getDefaultDisplaySync()
+let screenWidth = displayClass.width  // px
+let screenHeight = displayClass.height
+
+// vp 转 px
+let pxValue = 16  // vp
+// 1vp = displayClass.densityPixels * 1 px
+```
+
+---
+
+## 性能优化
+
+1. **使用 `LazyForEach` 替代 `ForEach`**：列表超过 100 项时
+2. **设置 `cachedCount`**：`List` 和 `Grid` 缓存屏幕外 3-5 项
+3. **避免 `build()` 中复杂计算**：提前计算好数据再赋值
+4. **减少 `@State` 嵌套层级**：扁平化状态，避免深层对象频繁变更触发大量重绘
+5. **使用 `if` 替代 `visibility`**：不需要显示时用 `if` 完全移除组件
+6. **图片懒加载**：`Image().interpolation(ImageInterpolation.Low).syncLoad(false)`
+7. **长列表避免动画**：`ListItem` 内避免 `transition` 和 `animateTo`
