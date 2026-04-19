@@ -8,7 +8,7 @@
 4. [生命周期](#生命周期)
 5. [状态管理最佳实践](#状态管理最佳实践)
 6. [常用工具函数](#常用工具函数)
-7. [Promise 错误处理](#promise-错误处理)
+7. [Promise 使用规范](#promise-使用规范)
 
 ---
 
@@ -570,56 +570,186 @@ let jsonStr = JSON.stringify(obj)
 
 ---
 
-## Promise 错误处理
+## Promise 使用规范
 
-**⚠️ 强制规则：调用返回 Promise 的函数，必须 catch 错误**
+### 强制规则
+
+**⚠️ 调用返回 Promise 的函数，必须 catch 错误**
+
+未处理的 Promise rejection 在鸿蒙中会导致应用崩溃，没有任何容错余地。
+
+### try...catch vs .catch 选择指南
+
+| 场景 | 推荐 | 原因 |
+|------|------|------|
+| `async` 函数内 `await` 多个异步操作 | `try...catch` | 一个 catch 包住多个 await，代码简洁 |
+| 链式调用 `.then().then()` | `.catch()` | 放在链尾统一捕获整条链的错误 |
+| 单个异步调用，需要不同错误处理 | `.catch()` | 每个调用独立处理 |
+| 需要在 finally 中做清理（隐藏 loading 等） | `try...catch...finally` | finally 无论成功失败都执行 |
+| 并发异步 `Promise.all()` | `try...catch` | 任一失败都需统一处理 |
+
+### try...catch 使用场景
 
 ```typescript
-// ❌ 未 catch — 未处理的 Promise rejection 会导致应用崩溃
-http.request(url)
-  .then(res => { /* 处理结果 */ })
+// ✅ 场景1：多个 await 需要统一错误处理
+async function loadPage() {
+  try {
+    const userInfo = await fetchUser()
+    const config = await fetchConfig()
+    const dataList = await fetchData(userInfo.id)
+    // 全部成功才到这
+  } catch (err) {
+    // 任意一个失败都走这
+    console.error(`页面加载失败: ${(err as Error).message}`)
+    promptAction.showToast({ message: '加载失败' })
+  }
+}
 
-// ❌ async/await 未 try-catch — 同样危险
-async function fetchData() {
+// ✅ 场景2：需要 finally 做清理
+async function submitForm() {
+  this.loading = true
+  try {
+    const res = await httpRequest.submit(formData)
+    promptAction.showToast({ message: '提交成功' })
+  } catch (err) {
+    promptAction.showToast({ message: '提交失败' })
+  } finally {
+    this.loading = false  // 无论成败都要关闭 loading
+  }
+}
+
+// ✅ 场景3：Promise.all 并发请求
+async function loadDashboard() {
+  try {
+    const [user, stats, notifications] = await Promise.all([
+      fetchUser(),
+      fetchStats(),
+      fetchNotifications()
+    ])
+    // 三个请求全部成功
+  } catch (err) {
+    // 任一请求失败
+    console.error(`仪表盘加载失败: ${(err as Error).message}`)
+  }
+}
+
+// ✅ 场景4：需要不同粒度的错误处理
+async function saveData() {
+  try {
+    await saveToLocal()   // 本地保存
+    try {
+      await syncToCloud() // 云端同步（失败不影响本地）
+    } catch (cloudErr) {
+      console.warn(`云端同步失败，数据已保存本地: ${(cloudErr as Error).message}`)
+    }
+  } catch (localErr) {
+    // 本地保存也失败了
+    promptAction.showToast({ message: '保存失败' })
+  }
+}
+```
+
+### .catch() 使用场景
+
+```typescript
+// ✅ 场景1：链式调用
+http.request(url)
+  .then(res => res.result as string)
+  .then(jsonStr => JSON.parse<IUserData>(jsonStr))
+  .then(data => this.userInfo = data)
+  .catch(err => {
+    // 捕获整条链中任一环节的错误
+    console.error(`请求/解析失败: ${(err as Error).message}`)
+  })
+
+// ✅ 场景2：单个异步调用，独立处理
+router.pushUrl({ url: 'pages/DetailPage' })
+  .catch(err => {
+    console.error(`页面跳转失败: ${(err as Error).message}`)
+    promptAction.showToast({ message: '跳转失败' })
+  })
+
+// ✅ 场景3：需要错误恢复（返回默认值）
+preferences.get('theme', 'light')
+  .then(theme => this.applyTheme(theme as string))
+  .catch(() => this.applyTheme('light'))  // 读取失败用默认值
+
+// ✅ 场景4：不依赖上下文的简单操作
+promptAction.showDialog({
+  title: '提示',
+  message: '确定删除？'
+}).catch(() => { /* 弹窗失败静默处理 */ })
+```
+
+### 常见错误写法
+
+```typescript
+// ❌ 只 then 不 catch — rejection 未处理
+http.request(url).then(res => { /* ... */ })
+
+// ❌ async/await 不 try-catch — 等同于未 catch
+async function load() {
   const res = await http.request(url)  // 网络异常直接崩溃
 }
 
-// ✅ .catch() 处理
-http.request(url)
-  .then(res => { /* 处理结果 */ })
-  .catch(err => {
-    console.error(`请求失败: ${err.message}`)
-    // 给用户友好提示
-    promptAction.showToast({ message: '网络请求失败，请稍后重试' })
-  })
-
-// ✅ async/await + try-catch
-async function fetchData() {
+// ❌ try-catch 范围太大 — 成功逻辑也被包进去了
+async function load() {
   try {
     const res = await http.request(url)
-    // 处理结果
+    this.updateUI(res)        // UI 更新出错也会被 catch 吞掉
+    this.saveToCache(res)     // 缓存出错也被吞掉
   } catch (err) {
-    console.error(`请求失败: ${(err as Error).message}`)
-    promptAction.showToast({ message: '网络请求失败，请稍后重试' })
+    // 分不清是网络错误还是 UI 错误
   }
 }
 
-// ✅ 统一封装错误处理
-async function safeRequest<T>(fn: () => Promise<T>, fallback?: T): Promise<T | undefined> {
+// ✅ 缩小 try-catch 范围
+async function load() {
+  let res: HttpResponse
+  try {
+    res = await http.request(url)
+  } catch (err) {
+    promptAction.showToast({ message: '网络请求失败' })
+    return  // 网络失败直接返回
+  }
+  // 以下逻辑不在 try 中，错误可以独立排查
+  this.updateUI(res)
+  this.saveToCache(res)
+}
+```
+
+### 统一封装模板
+
+```typescript
+// 通用安全请求封装
+async function safeRequest<T>(
+  fn: () => Promise<T>,
+  options?: {
+    fallback?: T
+    errorMsg?: string
+    silent?: boolean
+  }
+): Promise<T | undefined> {
   try {
     return await fn()
   } catch (err) {
-    console.error(`操作失败: ${(err as Error).message}`)
-    promptAction.showToast({ message: '操作失败，请稍后重试' })
-    return fallback
+    const msg = options?.errorMsg ?? '操作失败'
+    console.error(`${msg}: ${(err as Error).message}`)
+    if (!options?.silent) {
+      promptAction.showToast({ message: msg })
+    }
+    return options?.fallback
   }
 }
 
-// 使用统一封装
-const data = await safeRequest(() => http.request(url), defaultData)
+// 使用
+const data = await safeRequest(
+  () => http.request(url),
+  { fallback: defaultData, errorMsg: '加载失败' }
+)
 ```
 
-**常见需要 catch 的场景**：
+### 常见需要 catch 的 API
 
 | API | 场景 |
 |-----|------|
@@ -629,3 +759,5 @@ const data = await safeRequest(() => http.request(url), defaultData)
 | `systemDateTime.getTime()` | 系统时间获取 |
 | `promptAction.showDialog()` | 弹窗交互 |
 | `geoLocationManager.getCurrentLocation()` | 定位获取 |
+| `batteryInfo.getBatteryLevel()` | 电池信息 |
+| `wifiManager.getLinkedInfo()` | WiFi 信息 |
