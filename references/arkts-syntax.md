@@ -80,6 +80,54 @@ struct Child {
     Text(this.title)
   }
 }
+
+// ⚠️ 性能警告：@Prop 会进行深拷贝
+// 对于大数据对象，建议使用 @ObjectLink 或拆分属性
+
+### @Prop 性能问题
+
+**⚠️ 不推荐场景**：传递大数据对象给子组件
+
+```typescript
+// ❌ 性能差：@Prop 会深拷贝整个对象
+@Component
+struct Child {
+  @Prop user: IUser  // 深拷贝，大数据对象开销大
+}
+
+// ✅ 方案1：只传递需要的字段（primitive 类型）
+@Component
+struct Child {
+  @Prop userName: string
+  @Prop userAvatar: string
+}
+
+// ✅ 方案2：使用 @ObjectLink（不拷贝，共享引用）
+@Observed
+class User {
+  name: string = ''
+  avatar: string = ''
+}
+
+@Component
+struct Child {
+  @ObjectLink user: User  // 共享引用，无拷贝开销
+}
+
+// ✅ 方案3：使用 @Link（双向同步，无拷贝）
+@Component
+struct Child {
+  @Link user: User
+}
+// 父组件传递：Child({ user: $user })
+```
+
+**选择指南**：
+| 装饰器 | 拷贝行为 | 适用场景 |
+|--------|---------|---------|
+| `@Prop` | 深拷贝 | 小数据、primitive 类型 |
+| `@Link` | 不拷贝 | 需要双向同步 |
+| `@ObjectLink` | 不拷贝 | 观察对象内部变化 |
 ```
 
 ### @Link
