@@ -8,6 +8,7 @@
 4. [生命周期](#生命周期)
 5. [状态管理最佳实践](#状态管理最佳实践)
 6. [常用工具函数](#常用工具函数)
+7. [Promise 错误处理](#promise-错误处理)
 
 ---
 
@@ -566,3 +567,65 @@ setTimeout(() => { }, 1000)
 let parsed = JSON.parse<IUserData>(jsonStr)
 let jsonStr = JSON.stringify(obj)
 ```
+
+---
+
+## Promise 错误处理
+
+**⚠️ 强制规则：调用返回 Promise 的函数，必须 catch 错误**
+
+```typescript
+// ❌ 未 catch — 未处理的 Promise rejection 会导致应用崩溃
+http.request(url)
+  .then(res => { /* 处理结果 */ })
+
+// ❌ async/await 未 try-catch — 同样危险
+async function fetchData() {
+  const res = await http.request(url)  // 网络异常直接崩溃
+}
+
+// ✅ .catch() 处理
+http.request(url)
+  .then(res => { /* 处理结果 */ })
+  .catch(err => {
+    console.error(`请求失败: ${err.message}`)
+    // 给用户友好提示
+    promptAction.showToast({ message: '网络请求失败，请稍后重试' })
+  })
+
+// ✅ async/await + try-catch
+async function fetchData() {
+  try {
+    const res = await http.request(url)
+    // 处理结果
+  } catch (err) {
+    console.error(`请求失败: ${(err as Error).message}`)
+    promptAction.showToast({ message: '网络请求失败，请稍后重试' })
+  }
+}
+
+// ✅ 统一封装错误处理
+async function safeRequest<T>(fn: () => Promise<T>, fallback?: T): Promise<T | undefined> {
+  try {
+    return await fn()
+  } catch (err) {
+    console.error(`操作失败: ${(err as Error).message}`)
+    promptAction.showToast({ message: '操作失败，请稍后重试' })
+    return fallback
+  }
+}
+
+// 使用统一封装
+const data = await safeRequest(() => http.request(url), defaultData)
+```
+
+**常见需要 catch 的场景**：
+
+| API | 场景 |
+|-----|------|
+| `http.request()` | 网络请求 |
+| `router.pushUrl()` | 页面跳转 |
+| `preferences.get()` | 本地存储读取 |
+| `systemDateTime.getTime()` | 系统时间获取 |
+| `promptAction.showDialog()` | 弹窗交互 |
+| `geoLocationManager.getCurrentLocation()` | 定位获取 |
