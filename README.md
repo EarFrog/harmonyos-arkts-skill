@@ -1,6 +1,6 @@
 # HarmonyOS ArkTS Skill
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
 面向纯血鸿蒙（HarmonyOS NEXT）应用开发的 OpenClaw AI Skill。
 
@@ -125,6 +125,7 @@ const timestamp = systemDateTime.getTime()
 
 | 日期 | 更新内容 |
 |------|---------|
+| 2025-04-19 | 许可证更新为 Apache 2.0 |
 | 2025-04-19 | 添加时间计算最佳实践（`systemDateTime.getTime()`） |
 | 2025-04-19 | 添加 `@Prop` 性能警告与替代方案 |
 | 2025-04-18 | 初始版本，覆盖核心开发场景 |
@@ -137,7 +138,7 @@ const timestamp = systemDateTime.getTime()
 
 ## 许可证
 
-[MIT](LICENSE)
+本项目基于 [Apache License 2.0](LICENSE) 开源。
 
 ---
 
