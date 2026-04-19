@@ -496,6 +496,21 @@ let dateTimeFmt = new intl.DateTimeFormat('zh-CN', {
 })
 dateTimeFmt.format(new Date())
 
+// 时间计算 - 使用 systemDateTime（推荐）
+import { systemDateTime } from '@kit.BasicServicesKit'
+
+// 获取系统时间（毫秒时间戳）- 不受用户修改系统时间影响
+const startTime = systemDateTime.getTime()
+// ... 执行操作
+const endTime = systemDateTime.getTime()
+const diff = endTime - startTime  // 准确的时间差
+
+// ❌ 不推荐：Date.now() / new Date()
+// 用户修改系统时间会导致计算错误
+const wrongStart = Date.now()
+// 用户把系统时间往前调了
+const wrongEnd = Date.now()  // 可能比 start 还小！
+
 // 延迟执行
 setTimeout(() => { }, 1000)
 
