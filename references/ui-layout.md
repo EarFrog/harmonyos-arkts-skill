@@ -9,7 +9,9 @@
 5. [Scroll / Tabs](#scroll--tabs)
 6. [弹窗与浮层](#弹窗与浮层)
 7. [尺寸与间距规范](#尺寸与间距规范)
-8. [性能优化](#性能优化)
+8. [动画系统](#动画系统)
+9. [手势交互](#手势交互)
+10. [性能优化](#性能优化)
 
 ---
 
@@ -221,29 +223,32 @@ struct LazyListDemo {
 @Component
 struct RefreshList {
   @State dataList: string[] = ['A', 'B', 'C']
-  private refreshing: boolean = false
+  @State refreshing: boolean = false
 
   build() {
-    List({ space: 10 }) {
-      ForEach(this.dataList, (item: string) => {
-        ListItem() {
-          Text(item).width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(8)
-        }
+    Refresh({ refreshing: $$this.refreshing }) {
+      List({ space: 10 }) {
+        ForEach(this.dataList, (item: string) => {
+          ListItem() {
+            Text(item).width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(8)
+          }
+        }, (item: string) => item)
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .onReachEnd(() => {
+        // 上拉加载更多
+        this.dataList.push(...['D', 'E', 'F'])
       })
     }
-    .width('100%')
-    .layoutWeight(1)
-    .onReachEnd(() => {
-      // 上拉加载更多
-      this.dataList.push(...['D', 'E', 'F'])
-    })
-    .refreshEffect(true)  // 允许下拉刷新
     .onRefreshing(() => {
       // 下拉刷新逻辑
       setTimeout(() => {
-        this.dataList = ['A', 'B', 'C']  // 重置数据
+        this.dataList = ['A', 'B', 'C']
+        this.refreshing = false  // 停止刷新
       }, 1000)
     })
+    .refreshColor('#007DFF')
   }
 }
 ```
@@ -442,6 +447,189 @@ let screenHeight = displayClass.height
 // vp 转 px
 let pxValue = 16  // vp
 // 1vp = displayClass.densityPixels * 1 px
+```
+
+---
+
+## 动画系统
+
+### 显式动画 animateTo
+
+```typescript
+@State scale: number = 1
+@State opacity: number = 1
+
+// 修改状态时自动触发动画
+Button('点击放大')
+  .scale({ x: this.scale, y: this.scale })
+  .opacity(this.opacity)
+  .onClick(() => {
+    animateTo({ duration: 300, curve: Curve.EaseInOut }, () => {
+      this.scale = this.scale === 1 ? 1.5 : 1
+      this.opacity = this.opacity === 1 ? 0.5 : 1
+    })
+  })
+```
+
+### 属性动画 animation
+
+```typescript
+@State width: number = 100
+
+// 状态变化时自动动画过渡
+Column()
+  .width(this.width)
+  .height(100)
+  .backgroundColor('#007DFF')
+  .animation({ duration: 300, curve: Curve.EaseInOut })
+
+Button('变宽').onClick(() => { this.width = 200 })
+Button('恢复').onClick(() => { this.width = 100 })
+```
+
+### 组件转场 transition
+
+```typescript
+@State show: boolean = false
+
+if (this.show) {
+  Text('出现/消失动画')
+    .transition({
+      type: TransitionType.Insert,
+      opacity: 0,
+      translate: { y: -20 }
+    })
+    .transition({
+      type: TransitionType.Delete,
+      opacity: 0,
+      translate: { y: -20 }
+    })
+}
+
+Button('切换').onClick(() => {
+  animateTo({ duration: 300 }, () => {
+    this.show = !this.show
+  })
+})
+```
+
+### 常用动画曲线
+
+| 曲线 | 效果 |
+|------|------|
+| `Curve.Linear` | 匀速 |
+| `Curve.EaseIn` | 先慢后快 |
+| `Curve.EaseOut` | 先快后慢 |
+| `Curve.EaseInOut` | 慢→快→慢 |
+| `Curve.FastOutSlowIn` | 快出慢入（Material） |
+| `Curve.Spring` | 弹簧效果 |
+| `Curve.Smooth` | 平滑 |
+
+---
+
+## 手势交互
+
+### 点击手势 TapGesture
+
+```typescript
+Text('双击点赞')
+  .gesture(
+    TapGesture({ count: 2 })
+      .onAction(() => { console.info('双击') })
+  )
+```
+
+### 长按手势 LongPressGesture
+
+```typescript
+Image($r('app.media.photo'))
+  .gesture(
+    LongPressGesture({ repeat: true })
+      .onAction((event: GestureEvent) => {
+        console.info(`长按中: ${event.timestamp}`)
+      })
+      .onActionEnd(() => { console.info('长按结束') })
+  )
+```
+
+### 拖动手势 PanGesture
+
+```typescript
+@State offsetX: number = 0
+@State offsetY: number = 0
+
+Image($r('app.media.icon'))
+  .width(60).height(60)
+  .translate({ x: this.offsetX, y: this.offsetY })
+  .gesture(
+    PanGesture()
+      .onActionStart(() => { console.info('开始拖动') })
+      .onActionUpdate((event: GestureEvent) => {
+        this.offsetX = event.offsetX
+        this.offsetY = event.offsetY
+      })
+      .onActionEnd(() => { console.info('结束拖动') })
+  )
+```
+
+### 捏合手势 PinchGesture
+
+```typescript
+@State scale: number = 1
+
+Image($r('app.media.photo'))
+  .scale({ x: this.scale, y: this.scale })
+  .gesture(
+    PinchGesture()
+      .onActionUpdate((event: GestureEvent) => {
+        this.scale = event.scale
+      })
+  )
+```
+
+### 旋转手势 RotationGesture
+
+```typescript
+@State angle: number = 0
+
+Image($r('app.media.photo'))
+  .rotate({ angle: this.angle })
+  .gesture(
+    RotationGesture()
+      .onActionUpdate((event: GestureEvent) => {
+        this.angle = event.angle
+      })
+  )
+```
+
+### 滑动手势 SwipeGesture
+
+```typescript
+Text('左滑删除')
+  .gesture(
+    SwipeGesture({ direction: SwipeDirection.Horizontal })
+      .onAction(() => { console.info('左滑') })
+  )
+```
+
+### 手势组合
+
+```typescript
+// 串行：按顺序识别
+.gesture(
+  GestureGroup(GestureMode.Sequence,
+    TapGesture({ count: 2 }),
+    LongPressGesture()
+  )
+)
+
+// 并行：同时识别
+.gesture(
+  GestureGroup(GestureMode.Parallel,
+    PinchGesture(),
+    RotationGesture()
+  )
+)
 ```
 
 ---

@@ -12,6 +12,8 @@
 
 ## 基础请求
 
+> **提示**：回调风格需要手动处理错误，推荐使用 Promise + try-catch 方式（见下方 Promise 封装）
+
 ```typescript
 import { http } from '@kit.NetworkKit'
 
@@ -29,6 +31,9 @@ request.request(
       if (data.responseCode === 200) {
         let result = JSON.parse(data.result as string) as IResponse
       }
+    } else {
+      // 错误处理：打印或上报错误
+      console.error(`请求失败: ${err.message}`)
     }
   }
 )
@@ -45,6 +50,9 @@ request.request(
   (err, data) => {
     if (!err && data.responseCode === 200) {
       let result = JSON.parse(data.result as string)
+    } else {
+      // 错误处理：打印或上报错误
+      console.error(`请求失败: ${err.message}`)
     }
   }
 )
@@ -363,6 +371,10 @@ async function uploadFile(filePath: string) {
       )
     })
     return JSON.parse(response)
+  } catch (err) {
+    // 错误处理：打印或上报错误
+    console.error(`上传失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    throw err
   } finally {
     httpRequest.destroy()
   }
@@ -388,6 +400,10 @@ async function downloadFile(url: string, savePath: string): Promise<void> {
         }
       )
     })
+  } catch (err) {
+    // 错误处理：打印或上报错误
+    console.error(`下载失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    throw err
   } finally {
     httpRequest.destroy()
   }
@@ -403,11 +419,16 @@ import { webSocket } from '@kit.NetworkKit'
 
 const ws = webSocket.createWebSocket()
 
-ws.connect('wss://api.example.com/ws')
+// 连接需要 catch
+ws.connect('wss://api.example.com/ws').catch(err => {
+  console.error(`WebSocket 连接失败: ${err.message}`)
+})
 
 ws.on('open', () => {
   console.info('WebSocket connected')
-  ws.send('Hello Server')
+  ws.send('Hello Server').catch(err => {
+    console.error(`WebSocket 发送失败: ${err.message}`)
+  })
 })
 
 ws.on('message', (err, data) => {
@@ -424,8 +445,10 @@ ws.on('error', (err) => {
   console.error(`WebSocket error: ${err.message}`)
 })
 
-// 关闭
-ws.close({ code: 1000, reason: 'Normal closure' })
+// 关闭需要 catch
+ws.close({ code: 1000, reason: 'Normal closure' }).catch(err => {
+  console.error(`WebSocket 关闭失败: ${err.message}`)
+})
 ```
 
 ---

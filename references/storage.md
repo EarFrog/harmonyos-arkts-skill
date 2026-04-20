@@ -32,15 +32,23 @@ async function getPreferences(context: Context): Promise<void> {
 // 存入数据
 async function putString(key: string, value: string): Promise<void> {
   if (dataPreferences) {
-    await dataPreferences.put(key, value)
-    await dataPreferences.flush()  // 持久化到磁盘
+    try {
+      await dataPreferences.put(key, value)
+      await dataPreferences.flush()  // 持久化到磁盘
+    } catch (err) {
+      console.error(`putString failed: ${(err as Error).message}`)
+    }
   }
 }
 
 // 读取数据
 async function getString(key: string, defaultValue: string = ''): Promise<string> {
   if (dataPreferences) {
-    return await dataPreferences.get(key, defaultValue) as string
+    try {
+      return await dataPreferences.get(key, defaultValue) as string
+    } catch (err) {
+      console.error(`getString failed: ${(err as Error).message}`)
+    }
   }
   return defaultValue
 }
@@ -48,16 +56,24 @@ async function getString(key: string, defaultValue: string = ''): Promise<string
 // 删除数据
 async function remove(key: string): Promise<void> {
   if (dataPreferences) {
-    await dataPreferences.delete(key)
-    await dataPreferences.flush()
+    try {
+      await dataPreferences.delete(key)
+      await dataPreferences.flush()
+    } catch (err) {
+      console.error(`remove failed: ${(err as Error).message}`)
+    }
   }
 }
 
 // 清空所有
 async function clearAll(): Promise<void> {
   if (dataPreferences) {
-    await dataPreferences.clear()
-    await dataPreferences.flush()
+    try {
+      await dataPreferences.clear()
+      await dataPreferences.flush()
+    } catch (err) {
+      console.error(`clearAll failed: ${(err as Error).message}`)
+    }
   }
 }
 ```
@@ -109,40 +125,66 @@ class PreferencesUtil {
   }
 
   async init(context: Context): Promise<void> {
-    this.store = await preferences.getPreferences(context, this.STORE_NAME)
+    try {
+      this.store = await preferences.getPreferences(context, this.STORE_NAME)
+    } catch (err) {
+      console.error(`PreferencesUtil init failed: ${(err as Error).message}`)
+    }
   }
 
   async put<T>(key: string, value: T): Promise<void> {
     if (!this.store) return
-    const serialized = typeof value === 'object' ? JSON.stringify(value) : value
-    await this.store.put(key, serialized as preferences.ValueType)
-    await this.store.flush()
+    try {
+      const serialized = typeof value === 'object' ? JSON.stringify(value) : value
+      await this.store.put(key, serialized as preferences.ValueType)
+      await this.store.flush()
+    } catch (err) {
+      console.error(`PreferencesUtil put failed: ${(err as Error).message}`)
+    }
   }
 
   async get<T>(key: string, defaultValue: T): Promise<T> {
     if (!this.store) return defaultValue
-    const raw = await this.store.get(key, defaultValue)
-    if (typeof defaultValue === 'object' && typeof raw === 'string') {
-      return JSON.parse(raw) as T
+    try {
+      const raw = await this.store.get(key, defaultValue)
+      if (typeof defaultValue === 'object' && typeof raw === 'string') {
+        return JSON.parse(raw) as T
+      }
+      return raw as T
+    } catch (err) {
+      console.error(`PreferencesUtil get failed: ${(err as Error).message}`)
+      return defaultValue
     }
-    return raw as T
   }
 
   async remove(key: string): Promise<void> {
     if (!this.store) return
-    await this.store.delete(key)
-    await this.store.flush()
+    try {
+      await this.store.delete(key)
+      await this.store.flush()
+    } catch (err) {
+      console.error(`PreferencesUtil remove failed: ${(err as Error).message}`)
+    }
   }
 
   async clear(): Promise<void> {
     if (!this.store) return
-    await this.store.clear()
-    await this.store.flush()
+    try {
+      await this.store.clear()
+      await this.store.flush()
+    } catch (err) {
+      console.error(`PreferencesUtil clear failed: ${(err as Error).message}`)
+    }
   }
 
   async has(key: string): Promise<boolean> {
     if (!this.store) return false
-    return await this.store.has(key)
+    try {
+      return await this.store.has(key)
+    } catch (err) {
+      console.error(`PreferencesUtil has failed: ${(err as Error).message}`)
+      return false
+    }
   }
 }
 
@@ -160,7 +202,11 @@ import { prefUtil } from '../utils/PreferencesUtil'
 export default class EntryAbility extends UIAbility {
   async onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): Promise<void> {
     // 初始化 Preferences
-    await prefUtil.init(this.context)
+    try {
+      await prefUtil.init(this.context)
+    } catch (err) {
+      console.error(`Preferences 初始化失败: ${(err as Error).message}`)
+    }
   }
 }
 ```
@@ -212,18 +258,26 @@ interface IUser {
   email: string
 }
 
+import { relationalStore } from '@kit.ArkData'
+import { systemDateTime } from '@kit.BasicServicesKit'
+
 async function insertUser(user: IUser): Promise<number> {
   if (!rdbStore) return -1
-  
+
   const valueBucket: relationalStore.ValuesBucket = {
     name: user.name,
     age: user.age,
     email: user.email,
-    created_at: Date.now()
+    created_at: systemDateTime.getTime()
   }
-  
-  const rowId = await rdbStore.insert('user', valueBucket)
-  return rowId
+
+  try {
+    const rowId = await rdbStore.insert('user', valueBucket)
+    return rowId
+  } catch (err) {
+    console.error(`insertUser failed: ${(err as Error).message}`)
+    return -1
+  }
 }
 ```
 
@@ -232,42 +286,52 @@ async function insertUser(user: IUser): Promise<number> {
 ```typescript
 async function queryUsers(): Promise<IUser[]> {
   if (!rdbStore) return []
-  
+
   const predicates = new relationalStore.RdbPredicates('user')
   predicates.equalTo('age', 25).orderByDesc('created_at')
-  
-  const resultSet = await rdbStore.querySql(predicates)
-  const users: IUser[] = []
-  
-  while (resultSet.goToNextRow()) {
-    users.push({
-      name: resultSet.getString(resultSet.getColumnIndex('name')),
-      age: resultSet.getLong(resultSet.getColumnIndex('age')),
-      email: resultSet.getString(resultSet.getColumnIndex('email'))
-    })
+
+  try {
+    const resultSet = await rdbStore.querySql(predicates)
+    const users: IUser[] = []
+
+    while (resultSet.goToNextRow()) {
+      users.push({
+        name: resultSet.getString(resultSet.getColumnIndex('name')),
+        age: resultSet.getLong(resultSet.getColumnIndex('age')),
+        email: resultSet.getString(resultSet.getColumnIndex('email'))
+      })
+    }
+
+    resultSet.close()
+    return users
+  } catch (err) {
+    console.error(`queryUsers failed: ${(err as Error).message}`)
+    return []
   }
-  
-  resultSet.close()
-  return users
 }
 
 // 原生 SQL 查询
 async function queryBySql(sql: string): Promise<IUser[]> {
   if (!rdbStore) return []
-  
-  const resultSet = await rdbStore.querySql(sql)
-  const users: IUser[] = []
-  
-  while (resultSet.goToNextRow()) {
-    users.push({
-      name: resultSet.getString(resultSet.getColumnIndex('name')),
-      age: resultSet.getLong(resultSet.getColumnIndex('age')),
-      email: resultSet.getString(resultSet.getColumnIndex('email'))
-    })
+
+  try {
+    const resultSet = await rdbStore.querySql(sql)
+    const users: IUser[] = []
+
+    while (resultSet.goToNextRow()) {
+      users.push({
+        name: resultSet.getString(resultSet.getColumnIndex('name')),
+        age: resultSet.getLong(resultSet.getColumnIndex('age')),
+        email: resultSet.getString(resultSet.getColumnIndex('email'))
+      })
+    }
+
+    resultSet.close()
+    return users
+  } catch (err) {
+    console.error(`queryBySql failed: ${(err as Error).message}`)
+    return []
   }
-  
-  resultSet.close()
-  return users
 }
 ```
 
@@ -276,17 +340,22 @@ async function queryBySql(sql: string): Promise<IUser[]> {
 ```typescript
 async function updateUser(id: number, user: Partial<IUser>): Promise<number> {
   if (!rdbStore) return 0
-  
+
   const valueBucket: relationalStore.ValuesBucket = {}
   if (user.name) valueBucket.name = user.name
   if (user.age !== undefined) valueBucket.age = user.age
   if (user.email) valueBucket.email = user.email
-  
+
   const predicates = new relationalStore.RdbPredicates('user')
   predicates.equalTo('id', id)
-  
-  const changedRows = await rdbStore.update(valueBucket, predicates)
-  return changedRows
+
+  try {
+    const changedRows = await rdbStore.update(valueBucket, predicates)
+    return changedRows
+  } catch (err) {
+    console.error(`updateUser failed: ${(err as Error).message}`)
+    return 0
+  }
 }
 ```
 
@@ -295,12 +364,17 @@ async function updateUser(id: number, user: Partial<IUser>): Promise<number> {
 ```typescript
 async function deleteUser(id: number): Promise<number> {
   if (!rdbStore) return 0
-  
+
   const predicates = new relationalStore.RdbPredicates('user')
   predicates.equalTo('id', id)
-  
-  const deletedRows = await rdbStore.delete(predicates)
-  return deletedRows
+
+  try {
+    const deletedRows = await rdbStore.delete(predicates)
+    return deletedRows
+  } catch (err) {
+    console.error(`deleteUser failed: ${(err as Error).message}`)
+    return 0
+  }
 }
 ```
 
@@ -420,3 +494,13 @@ async function fileExists(fileName: string): Promise<boolean> {
 6. **数据清理**
    - `cacheDir` 和 `tempDir` 可被系统清理，不要存重要数据
    - 定期清理过期缓存
+
+7. **所有存储操作必须 try-catch**
+   - Preferences 的 `get`、`put`、`delete`、`flush`、`has` 等方法均可能抛出异常
+   - RelationalStore 的 `insert`、`update`、`delete`、`querySql` 等方法均可能抛出异常
+   - 每个 await 调用都应包裹在 try-catch 中，防止单个操作失败导致整个应用崩溃
+
+8. **获取时间使用 systemDateTime.getTime() 而非 Date.now()**
+   - `Date.now()` 在 ArkTS 环境中可能不够精确或存在时区问题
+   - 推荐使用 `@kit.BasicServicesKit` 中的 `systemDateTime.getTime()` 获取毫秒级时间戳
+   - 示例：`import { systemDateTime } from '@kit.BasicServicesKit'; const timestamp = systemDateTime.getTime()`

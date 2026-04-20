@@ -7,8 +7,10 @@
 3. [UI 渲染问题](#ui-渲染问题)
 4. [网络请求问题](#网络请求问题)
 5. [状态管理问题](#状态管理问题)
-6. [性能问题](#性能问题)
-7. [调试技巧](#调试技巧)
+6. [权限管理](#权限管理)
+7. [性能问题](#性能问题)
+8. [调试技巧](#调试技巧)
+9. [真机调试问题](#真机调试问题)
 
 ---
 
@@ -358,6 +360,70 @@ Child({ count: $count })
 
 ---
 
+## 权限管理
+
+### ❌ 权限未声明
+
+**现象**：调用 API 报错 `Permission denied`
+
+**解决**：
+```json
+// module.json5 中声明权限
+{
+  "module": {
+    "requestPermissions": [
+      { "name": "ohos.permission.INTERNET" },
+      { "name": "ohos.permission.GET_WIFI_INFO" },
+      { "name": "ohos.permission.APPROXIMATELY_LOCATION" },
+      { "name": "ohos.permission.LOCATION" }
+    ]
+  }
+}
+```
+
+### ❌ 动态授权被拒绝
+
+**原因**：敏感权限需要运行时弹窗授权
+
+**解决**：
+```typescript
+import { abilityAccessCtrl, bundleManager, Permissions } from '@kit.AbilityKit'
+
+async function requestPermission(context: Context, permission: Permissions): Promise<boolean> {
+  const atManager = abilityAccessCtrl.createAtManager()
+  try {
+    const result = await atManager.requestPermissionsFromUser(context, [permission])
+    return result.authResults[0] === 0  // 0 = 授权成功
+  } catch (err) {
+    console.error(`请求权限失败: ${(err as Error).message}`)
+    return false
+  }
+}
+
+// 使用
+const granted = await requestPermission(this.context, 'ohos.permission.LOCATION')
+if (granted) {
+  // 执行需要权限的操作
+} else {
+  promptAction.showToast({ message: '需要位置权限才能使用此功能' })
+}
+```
+
+### 常用权限分级
+
+| 权限 | 类型 | 说明 |
+|------|------|------|
+| `ohos.permission.INTERNET` | normal | 网络访问（声明即可） |
+| `ohos.permission.GET_WIFI_INFO` | normal | WiFi 信息（声明即可） |
+| `ohos.permission.APPROXIMATELY_LOCATION` | user_grant | 大概位置（需动态授权） |
+| `ohos.permission.LOCATION` | user_grant | 精确位置（需动态授权） |
+| `ohos.permission.CAMERA` | user_grant | 相机（需动态授权） |
+| `ohos.permission.READ_MEDIA` | user_grant | 读取媒体文件（需动态授权） |
+| `ohos.permission.WRITE_MEDIA` | user_grant | 写入媒体文件（需动态授权） |
+| `ohos.permission.NOTIFICATION_CONTROLLER` | system_core | 通知（系统应用才有） |
+
+---
+
 ## 性能问题
 
 ### ❌ 列表滚动卡顿
@@ -463,3 +529,41 @@ hilog.error(0x0000, TAG, '错误信息')
 
 - DevEco Studio → Network Profiler
 - 查看请求详情和响应
+
+---
+
+## 真机调试问题
+
+### ❌ 设备连接不上
+
+**排查步骤**：
+1. USB 线是否支持数据传输（非仅充电线）
+2. 手机是否开启开发者模式和 USB 调试
+3. DevEco Studio 是否识别到设备
+4. 执行 `hdc list targets` 检查设备列表
+
+```bash
+# hdc 是鸿蒙的设备调试工具（类似 adb）
+hdc list targets              # 列出已连接设备
+hdc install xxx.hap           # 安装应用
+hdc shell                     # 进入设备 shell
+hdc log -x                    # 查看日志
+```
+
+### ❌ 签名配置错误
+
+**现象**：安装 HAP 时报签名错误
+
+**解决**：
+1. 在 AGC（AppGallery Connect）创建项目和应用
+2. 生成调试签名证书和 Profile
+3. 在 DevEco Studio → File → Project Structure → Signing Configs 中配置
+4. 勾选「Automatically generate signature」
+
+### ❌ 真机运行白屏
+
+**排查步骤**：
+1. 检查 EntryAbility 中 `loadContent` 路径是否正确
+2. 检查 `main_pages.json` 中是否注册了页面
+3. 查看 log 日志是否有崩溃信息
+4. 检查是否缺少权限导致功能异常

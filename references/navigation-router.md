@@ -7,6 +7,7 @@
 3. [页面间参数传递](#页面间参数传递)
 4. [页面转场动画](#页面转场动画)
 5. [最佳实践](#最佳实践)
+6. [Tab + Navigation 组合模式](#tab--navigation-组合模式)
 
 ---
 
@@ -18,29 +19,43 @@
 import { router } from '@kit.ArkUI'
 
 // 跳转（压栈）
-router.pushUrl({ url: 'pages/Detail' })
+router.pushUrl({ url: 'pages/Detail' }).catch(err => {
+  console.error(`页面跳转失败: ${err.message}`)
+})
 
 // 跳转并传参
 router.pushUrl({
   url: 'pages/Detail',
   params: { id: 1001, title: '商品详情' }
+}).catch(err => {
+  console.error(`页面跳转失败: ${err.message}`)
 })
 
 // 替换当前页（不可返回）
-router.replaceUrl({ url: 'pages/Login' })
+router.replaceUrl({ url: 'pages/Login' }).catch(err => {
+  console.error(`页面跳转失败: ${err.message}`)
+})
 
 // 返回上一页
-router.back()
+router.back().catch(err => {
+  console.error(`页面返回失败: ${err.message}`)
+})
 
 // 返回并传参
-router.back({ url: 'pages/Index', params: { result: 'ok' } })
+router.back({ url: 'pages/Index', params: { result: 'ok' } }).catch(err => {
+  console.error(`页面返回失败: ${err.message}`)
+})
 
 // 返回到指定页面
-router.backToUrl({ url: 'pages/Home' })
+router.backToUrl({ url: 'pages/Home' }).catch(err => {
+  console.error(`页面返回失败: ${err.message}`)
+})
 
 // 清空栈并跳转
 router.clear()
-router.pushUrl({ url: 'pages/Login' })
+router.pushUrl({ url: 'pages/Login' }).catch(err => {
+  console.error(`页面跳转失败: ${err.message}`)
+})
 ```
 
 ### 接收参数
@@ -66,7 +81,11 @@ struct Detail {
     Column() {
       Text(`ID: ${this.id}`)
       Text(this.title)
-      Button('返回').onClick(() => router.back())
+      Button('返回').onClick(() => {
+        router.back().catch(err => {
+          console.error(`页面返回失败: ${err.message}`)
+        })
+      })
     }
   }
 }
@@ -78,10 +97,14 @@ struct Detail {
 import { RouterMode } from '@kit.ArkUI'
 
 // Standard：每次跳转都压入新实例
-router.pushUrl({ url: 'pages/Detail' }, router.RouterMode.Standard)
+router.pushUrl({ url: 'pages/Detail' }, router.RouterMode.Standard).catch(err => {
+  console.error(`页面跳转失败: ${err.message}`)
+})
 
 // Single：栈中已有则复用
-router.pushUrl({ url: 'pages/Detail' }, router.RouterMode.Single)
+router.pushUrl({ url: 'pages/Detail' }, router.RouterMode.Single).catch(err => {
+  console.error(`页面跳转失败: ${err.message}`)
+})
 ```
 
 ### 路由拦截
@@ -214,4 +237,114 @@ Navigation(this.pathStack) {
 .navBarWidth('100%')
 .navBarHeight(56)
 .mode(NavigationMode.Stack)              // Stack（导航栈）/ Split（分栏）
+```
+
+---
+
+## Tab + Navigation 组合模式
+
+底部 Tab 与 Navigation 导航是实际项目中最常见的组合。下面给出两种主流实现方式。
+
+### 方式一：自定义 TabBar + Stack 切换
+
+```typescript
+// 底部 Tab + Navigation 常见组合
+@Entry
+@Component
+struct MainTab {
+  @State currentIndex: number = 0
+  @State pathStack: NavPathStack = new NavPathStack()
+
+  // Tab 配置
+  private tabs: ITab[] = [
+    { title: '首页', icon: $r('app.media.home'), activeIcon: $r('app.media.home_active') },
+    { title: '分类', icon: $r('app.media.category'), activeIcon: $r('app.media.category_active') },
+    { title: '我的', icon: $r('app.media.profile'), activeIcon: $r('app.media.profile_active') }
+  ]
+
+  build() {
+    Column() {
+      // 内容区域
+      Stack() {
+        if (this.currentIndex === 0) {
+          HomePage()
+        } else if (this.currentIndex === 1) {
+          CategoryPage()
+        } else {
+          ProfilePage()
+        }
+      }
+      .layoutWeight(1)
+
+      // 底部 TabBar
+      Row() {
+        ForEach(this.tabs, (tab: ITab, index?: number) => {
+          Column() {
+            Image(this.currentIndex === index ? tab.activeIcon : tab.icon)
+              .width(24).height(24)
+            Text(tab.title)
+              .fontSize(10)
+              .fontColor(this.currentIndex === index ? '#007DFF' : '#999999')
+          }
+          .layoutWeight(1)
+          .onClick(() => { this.currentIndex = index ?? 0 })
+        })
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#FFFFFF')
+      .border({ width: { top: 0.5 }, color: '#EEEEEE' })
+    }
+    .width('100%')
+    .height('100%')
+  }
+}
+```
+
+### 方式二：Navigation + Tabs 组件
+
+```typescript
+@Entry
+@Component
+struct NavTabsDemo {
+  private navStack: NavPathStack = new NavPathStack()
+  @State currentIndex: number = 0
+
+  build() {
+    Column() {
+      Tabs({ index: this.currentIndex }) {
+        TabContent() {
+          Navigation(this.navStack) {
+            HomePage()
+          }
+          .title('首页')
+          .navDestination(this.buildNavDestination)
+        }.tabBar(this.tabBuilder('首页', 0))
+
+        TabContent() {
+          CategoryPage()
+        }.tabBar(this.tabBuilder('分类', 1))
+
+        TabContent() {
+          ProfilePage()
+        }.tabBar(this.tabBuilder('我的', 2))
+      }
+      .onChange((index: number) => { this.currentIndex = index })
+    }
+  }
+
+  @Builder
+  tabBuilder(title: string, index: number) {
+    Column() {
+      Text(title)
+        .fontSize(this.currentIndex === index ? 14 : 12)
+        .fontColor(this.currentIndex === index ? '#007DFF' : '#999999')
+    }
+  }
+
+  @Builder
+  buildNavDestination(name: string, param: Object) {
+    // 路由目标页
+  }
+}
 ```

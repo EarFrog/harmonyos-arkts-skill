@@ -9,6 +9,11 @@
 5. [状态管理最佳实践](#状态管理最佳实践)
 6. [常用工具函数](#常用工具函数)
 7. [Promise 使用规范](#promise-使用规范)
+8. [@Watch 监听状态变化](#watch-监听状态变化)
+9. [@Builder 详细用法](#builder-详细用法)
+10. [@Extend 详细用法](#extend-详细用法)
+11. [@Styles 详细用法](#styles-详细用法)
+12. [自定义组件事件回调](#自定义组件事件回调)
 
 ---
 
@@ -227,7 +232,7 @@ struct TodoItemComponent {
 
 ### @Builder
 
-轻量 UI 复用函数，内部可引用组件状态。
+轻量 UI 复用函数，内部可引用组件状态。详见 [@Builder 详细用法](#builder-详细用法)。
 
 ```typescript
 @Component
@@ -272,7 +277,7 @@ Container() {
 
 ### @Extend
 
-扩展原生组件样式，不支持传参（无参）。
+扩展原生组件样式，只支持全局定义。详见 [@Extend 详细用法](#extend-详细用法)。
 
 ```typescript
 @Extend(Text)
@@ -288,7 +293,7 @@ Text('¥99.9').priceText()
 
 ### @Styles
 
-抽取通用样式，支持全局和组件内。
+抽取通用样式，支持全局和组件内。详见 [@Styles 详细用法](#styles-详细用法)。
 
 ```typescript
 // 组件内
@@ -450,6 +455,54 @@ animateTo({ duration: 300 }, () => {
 | `onPageShow()` | 页面显示时（仅 `@Entry`） |
 | `onPageHide()` | 页面隐藏时（仅 `@Entry`） |
 | `onBackPress()` | 返回键按下（仅 `@Entry`） |
+
+### 页面生命周期详细说明
+
+```typescript
+// 页面生命周期（@Entry 组件）
+@Entry
+@Component
+struct MyPage {
+  // 组件创建时触发（每次进入页面）
+  aboutToAppear(): void {
+    // 初始化数据、发起请求
+  }
+
+  // 组件销毁时触发
+  aboutToDisappear(): void {
+    // 清理定时器、取消订阅
+  }
+
+  // 页面每次显示时触发（从其他页面返回也会触发）
+  onPageShow(): void {
+    // 刷新数据
+  }
+
+  // 页面隐藏时触发
+  onPageHide(): void {
+    // 暂停操作
+  }
+
+  // 返回按钮按下时触发，返回 true 表示自己处理返回逻辑
+  onBackPress(): boolean {
+    // 弹出确认框
+    return true  // 返回 true 阻止默认返回
+  }
+
+  build() { }
+}
+```
+
+### 生命周期触发时序
+
+```
+首次进入: aboutToAppear → build → onPageShow
+切换离开: onPageHide → aboutToDisappear
+返回页面: aboutToAppear → build → onPageShow
+按返回键: onBackPress → (返回 true 则不退出, false 则默认退出)
+```
+
+### 简要示例
 
 ```typescript
 @Entry
@@ -761,3 +814,206 @@ const data = await safeRequest(
 | `geoLocationManager.getCurrentLocation()` | 定位获取 |
 | `batteryInfo.getBatteryLevel()` | 电池信息 |
 | `wifiManager.getLinkedInfo()` | WiFi 信息 |
+
+---
+
+## @Watch 监听状态变化
+
+### 基本用法
+
+```typescript
+// @Watch 监听状态变化
+@Component
+struct SearchPage {
+  @State keyword: string = ''
+  @Watch('keyword')
+  onKeywordChange(newValue: string): void {
+    // keyword 变化时自动触发
+    this.search(newValue)
+  }
+
+  private search(keyword: string): void {
+    // 搜索逻辑
+  }
+
+  build() {
+    TextInput({ text: this.keyword })
+      .onChange((value: string) => { this.keyword = value })
+  }
+}
+```
+
+### 监听 @Prop 变化
+
+```typescript
+// @Watch 也可以监听 @Prop
+@Component
+struct Child {
+  @Prop @Watch('onCountChange') count: number = 0
+
+  onCountChange(newValue: number): void {
+    console.info(`count 变为 ${newValue}`)
+  }
+}
+```
+
+---
+
+## @Builder 详细用法
+
+### 无参与有参 Builder
+
+```typescript
+// @Builder 轻量复用 UI 片段
+@Component
+struct MyComponent {
+  @State count: number = 0
+
+  // 无参 Builder
+  @Builder
+  titleBar() {
+    Row() {
+      Text('标题').fontSize(18).fontWeight(FontWeight.Bold)
+    }
+    .width('100%')
+    .padding(16)
+  }
+
+  // 有参 Builder
+  @Builder
+  itemCard(title: string, value: string) {
+    Row() {
+      Text(title).fontSize(14).fontColor('#666666')
+      Blank()
+      Text(value).fontSize(14).fontWeight(FontWeight.Medium)
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(8)
+  }
+
+  build() {
+    Column({ space: 12 }) {
+      this.titleBar()
+      this.itemCard('姓名', '张三')
+      this.itemCard('年龄', '25')
+    }
+  }
+}
+```
+
+---
+
+## @Extend 详细用法
+
+### 扩展原生组件样式
+
+```typescript
+// @Extend 扩展原生组件样式（只支持全局定义）
+@Extend(Text)
+function highlightText() {
+  .fontSize(16)
+  .fontColor('#FF0000')
+  .fontWeight(FontWeight.Bold)
+}
+
+// 带参数的 @Extend
+@Extend(Text)
+function styledText(size: number, color: string) {
+  .fontSize(size)
+  .fontColor(color)
+}
+
+// 使用
+Text('重要').highlightText()
+Text('普通').styledText(14, '#333333')
+```
+
+---
+
+## @Styles 详细用法
+
+### 组件内与全局样式
+
+```typescript
+// @Styles 提取通用样式（组件内或全局）
+// 组件内
+@Component
+struct MyComponent {
+  @Styles
+  cardStyle() {
+    .width('100%')
+    .padding(16)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(12)
+  }
+
+  build() {
+    Column() {
+      Text('卡片1').cardStyle()
+      Text('卡片2').cardStyle()
+    }
+  }
+}
+
+// 全局（不支持参数）
+@Styles
+function globalCardStyle() {
+  .width('100%')
+  .padding(16)
+  .backgroundColor('#FFFFFF')
+  .borderRadius(12)
+}
+```
+
+---
+
+## 自定义组件事件回调
+
+### 子组件向父组件传递事件
+
+```typescript
+// 子组件向父组件传递事件
+@Component
+struct Child {
+  @State inputValue: string = ''
+  // 回调函数属性
+  onSearch?: (keyword: string) => void
+  onClose?: () => void
+
+  build() {
+    Row() {
+      TextInput({ text: this.inputValue })
+        .onChange((value: string) => { this.inputValue = value })
+      Button('搜索').onClick(() => {
+        this.onSearch?.(this.inputValue)
+      })
+      Button('关闭').onClick(() => {
+        this.onClose?.()
+      })
+    }
+  }
+}
+
+// 父组件使用
+@Entry
+@Component
+struct Parent {
+  @State searchResult: string = ''
+
+  build() {
+    Column() {
+      Child({
+        onSearch: (keyword: string) => {
+          this.searchResult = `搜索: ${keyword}`
+        },
+        onClose: () => {
+          console.info('关闭搜索')
+        }
+      })
+      Text(this.searchResult)
+    }
+  }
+}
+```
