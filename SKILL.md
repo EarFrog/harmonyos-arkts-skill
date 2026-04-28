@@ -9,7 +9,8 @@ description: |
   Preferences、RelationalStore、systemDateTime、animateTo、transition、
   TapGesture、PanGesture、PinchGesture、Refresh、鸿蒙开发、鸿蒙App、鸿蒙组件。
   覆盖场景：生成 ArkTS 组件代码、页面路由、HTTP 请求封装、本地存储、
-  UI 布局、项目结构规范、常见错误排查、API 速查。
+  UI 布局、项目结构规范、常见错误排查、API 速查、编程规范、
+  编译校验、icon 使用规范、ArkTS Lint、ArkUI 性能最佳实践。
 metadata:
   openclaw:
     emoji: "🦋"
@@ -26,10 +27,13 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 - 语言：ArkTS（TypeScript 的超集，有额外的编译期检查和装饰器）
 - UI：ArkUI 声明式（`@Component` + `build()`）
 - 代码风格：遵循 [ArkTS 编码规范](references/arkts-syntax.md)
+- 编程规范：生成或修改 ArkTS/ArkUI 代码时，按需加载 [arkts-syntax.md](references/arkts-syntax.md) 中的编程规范章节
 - 状态管理：优先使用 `@State` / `@Link` / `@Provide` / `@Consume`
 - 时间获取：使用 `systemDateTime.getTime()`（`@kit.BasicServicesKit`），不使用 `Date.now()`
 - 错误处理：所有 Promise 调用必须 catch，详见 [arkts-syntax.md → Promise 使用规范](references/arkts-syntax.md)
 - 性能优先：避免 `@Prop` 传递大数据对象，优先 `@ObjectLink`
+- 修改鸿蒙应用代码后：优先执行 `hvigorw assembleHap` 编译校验；若编译失败，继续修复直到通过或明确说明阻塞原因
+- 图标使用：需要 icon 时优先查找并复用项目内 `symbolname.cursorrules`
 
 ## 参考文档索引
 
@@ -37,7 +41,7 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 
 | 任务类型 | 参考文档 |
 |---------|---------|
-| ArkTS 语法、装饰器、类型系统、生命周期、Promise | [arkts-syntax.md](references/arkts-syntax.md) |
+| ArkTS 语法、装饰器、类型系统、生命周期、Promise、编程规范、编译校验、icon、ArkTS Lint、ArkUI 性能最佳实践 | [arkts-syntax.md](references/arkts-syntax.md) |
 | UI 布局、动画、手势交互 | [ui-layout.md](references/ui-layout.md) |
 | 页面路由跳转、Navigation、Tab 组合 | [navigation-router.md](references/navigation-router.md) |
 | HTTP 网络请求、WebSocket | [network-http.md](references/network-http.md) |
@@ -104,5 +108,6 @@ export struct MyComponent {
 - 禁止使用 `Date.now()` / `new Date()` 获取时间戳，必须使用 `systemDateTime.getTime()`
 - 禁止不 catch Promise 返回值，所有返回 Promise 的函数调用必须 try-catch 或 .catch()
 - 禁止使用 `@Prop` 传递大数据对象（深拷贝性能差），改用 `@ObjectLink` 或拆分字段
+- 禁止使用对象字面量作为类型声明，必须显式声明 `interface` 或 `class`
 - 禁止使用 `enum`，使用 `const` 对象 + union type 替代
 - 禁止使用 `for...in`，使用 `Object.entries` 替代
