@@ -2,7 +2,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-面向纯血鸿蒙（HarmonyOS NEXT）应用开发的 OpenClaw AI Skill。
+面向纯血鸿蒙（HarmonyOS NEXT）应用开发的 AI Skill。
 
 ## 简介
 
@@ -29,17 +29,17 @@
 
 ## 安装使用
 
-### 通过 OpenClaw 安装
+### 通过 【你的ai】 安装，如codex：
 
 ```bash
 # 克隆到本地 skills 目录
-cd ~/.qclaw/skills
+cd ~/.codex/skills
 git clone https://github.com/EarFrog/harmonyos-arkts-skill.git harmonyos-arkts
 ```
 
 ### 直接使用
 
-在 OpenClaw 对话中，AI 将自动引用本 Skill 的文档来回答鸿蒙开发相关问题。
+在与 AI 对话中，AI 将自动引用本 Skill 的文档来回答鸿蒙开发相关问题。
 
 ## 文档目录
 
@@ -121,14 +121,6 @@ const timestamp = systemDateTime.getTime()
 - **提交改进**：Fork 后修改，提交 Pull Request
 - **补充文档**：发现遗漏的 API 或最佳实践，欢迎补充
 
-## 更新日志
-
-| 日期 | 更新内容 |
-|------|---------|
-| 2025-04-19 | 许可证更新为 Apache 2.0 |
-| 2025-04-19 | 添加时间计算最佳实践（`systemDateTime.getTime()`） |
-| 2025-04-19 | 添加 `@Prop` 性能警告与替代方案 |
-| 2025-04-18 | 初始版本，覆盖核心开发场景 |
 
 ## 相关资源
 
