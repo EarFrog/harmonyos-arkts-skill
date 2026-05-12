@@ -32,8 +32,11 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 - 时间获取：使用 `systemDateTime.getTime()`（`@kit.BasicServicesKit`），不使用 `Date.now()`
 - 错误处理：所有 Promise 调用必须 catch，详见 [arkts-syntax.md → Promise 使用规范](references/arkts-syntax.md)
 - 性能优先：避免 `@Prop` 传递大数据对象，优先 `@ObjectLink`
+- ArkTSCheck：调用 SDK API 时不要内联未显式类型的 options/record 对象字面量；先声明为对应 SDK `interface` 类型变量（如 `image.PackingOption`、`photoAccessHelper.CreateOptions`、`systemShare.SharedRecord`、`systemShare.ShareControllerOptions`），再传参
+- 换行缩进：参数列表、对象字面量、链式调用、条件表达式等需要换行时，续行统一使用 4 个空格占位，不使用 2 个空格
 - 修改鸿蒙应用代码后：优先执行 `hvigorw assembleHap` 编译校验；若编译失败，继续修复直到通过或明确说明阻塞原因
 - 图标使用：需要 icon 时优先查找并复用项目内 `symbolname.cursorrules`
+- Import 规范：优先使用最具体、最小范围的导入入口，避免聚合入口打开无关资源文件；项目内自定义组件、工具类、业务模块必须导入到具体源码文件，例如用 `import { Logger } from '@ohos/common/src/main/ets/utils/Logger';`，不用 `import { Logger } from '@ohos/common'`；系统 SDK 或官方模块也优先选择官方文档支持的具体模块入口，只有官方要求时才使用包名聚合入口
 
 ## 参考文档索引
 
@@ -51,6 +54,32 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 
 ## 代码生成规范
 
+### 换行缩进规范
+
+- ArkTS/ArkUI 代码换行后，续行占位统一使用 4 个空格，不使用 2 个空格。
+- 适用范围：函数调用参数、对象/数组字面量、链式调用、长条件表达式、长 import/export 语句、Builder 参数等。
+- 续行应与语义层级对齐，优先提高可读性；不要为了压缩行数把多个参数或多个属性挤在同一行。
+- 修改已有文件时，若局部已有明确格式，以最小范围保持一致；新增或重排的换行按 4 空格续行。
+
+```typescript
+const options: image.PackingOption = {
+    format: 'image/jpeg',
+    quality: 90
+}
+
+this.photoAccessHelper.createAsset(
+    photoAccessHelper.PhotoType.IMAGE,
+    'jpg',
+    options
+)
+
+Column() {
+    Text(this.message)
+        .fontSize(16)
+        .fontColor('#333333')
+}
+```
+
 ### 组件生成
 
 生成 `@Component` 时必须包含：
@@ -64,29 +93,29 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 ```typescript
 @Component
 export struct MyComponent {
-  @State message: string = 'Hello'
-  private timer: number = -1
+    @State message: string = 'Hello'
+    private timer: number = -1
 
-  aboutToAppear(): void {
-    // 初始化逻辑
-  }
-
-  aboutToDisappear(): void {
-    if (this.timer !== -1) {
-      clearInterval(this.timer)
+    aboutToAppear(): void {
+        // 初始化逻辑
     }
-  }
 
-  build() {
-    Column() {
-      Text(this.message)
-        .fontSize(16)
-        .fontColor('#333333')
+    aboutToDisappear(): void {
+        if (this.timer !== -1) {
+            clearInterval(this.timer)
+        }
     }
-    .width('100%')
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-  }
+
+    build() {
+        Column() {
+            Text(this.message)
+                .fontSize(16)
+                .fontColor('#333333')
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+    }
 }
 ```
 
@@ -109,5 +138,7 @@ export struct MyComponent {
 - 禁止不 catch Promise 返回值，所有返回 Promise 的函数调用必须 try-catch 或 .catch()
 - 禁止使用 `@Prop` 传递大数据对象（深拷贝性能差），改用 `@ObjectLink` 或拆分字段
 - 禁止使用对象字面量作为类型声明，必须显式声明 `interface` 或 `class`
+- 禁止向 SDK API 直接传未显式类型的 options/record 对象字面量，避免 `arkts-no-untyped-obj-literals`
 - 禁止使用 `enum`，使用 `const` 对象 + union type 替代
 - 禁止使用 `for...in`，使用 `Object.entries` 替代
+- 禁止优先使用聚合入口导入；项目内自定义组件、工具类、业务模块等必须导入到具体文件路径，系统 SDK 或官方模块优先使用官方支持的具体模块入口

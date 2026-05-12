@@ -400,6 +400,64 @@ function updateUser(user: IUser): void {
 }
 ```
 
+### SDK options 对象必须显式类型化
+
+ArkTSCheck 对 SDK API 的对象字面量也很严格。遇到 `Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals)` 时，不要把 options/record 直接内联传给 SDK 方法；先用 SDK 暴露的 interface 显式声明变量，再传参。
+
+```typescript
+import image from '@ohos.multimedia.image'
+import photoAccessHelper from '@ohos.file.photoAccessHelper'
+import { systemShare } from '@kit.ShareKit'
+
+// ❌ 容易触发 arkts-no-untyped-obj-literals
+await packer.packToData(pixelMap, {
+  format: 'image/jpeg',
+  quality: 100
+})
+
+await photoHelper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg', {
+  title: imageTitle
+})
+
+const data = new systemShare.SharedData({
+  utd: utdTypeId,
+  uri: fileUri,
+  title: '分享我的作品'
+})
+
+// ✅ 推荐：先声明为 SDK interface 类型
+const packingOption: image.PackingOption = {
+  format: 'image/jpeg',
+  quality: 100
+}
+await packer.packToData(pixelMap, packingOption)
+
+const createOptions: photoAccessHelper.CreateOptions = {
+  title: imageTitle
+}
+await photoHelper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg', createOptions)
+
+const shareRecord: systemShare.SharedRecord = {
+  utd: utdTypeId,
+  uri: fileUri,
+  title: '分享我的作品'
+}
+const shareData = new systemShare.SharedData(shareRecord)
+
+const shareOptions: systemShare.ShareControllerOptions = {
+  selectionMode: systemShare.SelectionMode.SINGLE,
+  previewMode: systemShare.SharePreviewMode.DETAIL
+}
+await controller.show(context, shareOptions)
+```
+
+常见需要显式类型化的对象：
+
+- `image.PackingOption`：`ImagePacker.packToData()` / `packToFile()`。
+- `photoAccessHelper.CreateOptions`：`photoAccessHelper.createAsset()`。
+- `systemShare.SharedRecord`：`new systemShare.SharedData(record)`。
+- `systemShare.ShareControllerOptions`：`ShareController.show(context, options)`。
+
 ### 枚举替代方案
 
 ```typescript
