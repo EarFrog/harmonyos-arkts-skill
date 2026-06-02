@@ -28,8 +28,8 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 - UI：ArkUI 声明式（`@Component` + `build()`）
 - 代码风格：遵循 [ArkTS 编码规范](references/arkts-syntax.md)
 - 编程规范：生成或修改 ArkTS/ArkUI 代码时，按需加载 [arkts-syntax.md](references/arkts-syntax.md) 中的编程规范章节
-- 状态管理：优先使用 `@State` / `@Link` / `@Provide` / `@Consume`
-- 时间获取：使用 `systemDateTime.getTime()`（`@kit.BasicServicesKit`），不使用 `Date.now()`
+- 状态管理：按作用域和同步方向选择；组件内状态用 `@State`，父子单向同步用 `@Prop` 或普通参数，父子双向同步用 `@Link`，跨层级同步用 `@Provide` / `@Consume`，复杂对象深层观察用 `@Observed` + `@ObjectLink`
+- 时间计算：涉及时间戳、耗时、超时、排序等计算时，使用 `systemDateTime.getTime()`（`@kit.BasicServicesKit`），不使用 `Date.now()` / `new Date()`
 - 错误处理：所有 Promise 调用必须 catch，详见 [arkts-syntax.md → Promise 使用规范](references/arkts-syntax.md)
 - 性能优先：避免 `@Prop` 传递大数据对象，优先 `@ObjectLink`
 - ArkTSCheck：调用 SDK API 时不要内联未显式类型的 options/record 对象字面量；先声明为对应 SDK `interface` 类型变量（如 `image.PackingOption`、`photoAccessHelper.CreateOptions`、`systemShare.SharedRecord`、`systemShare.ShareControllerOptions`），再传参
@@ -37,6 +37,7 @@ HarmonyOS NEXT (API 12+)，纯血鸿蒙，ArkTS + ArkUI 声明式开发范式。
 - 修改鸿蒙应用代码后：优先执行 `hvigorw assembleHap` 编译校验；若编译失败，继续修复直到通过或明确说明阻塞原因
 - 图标使用：需要 icon 时优先查找并复用项目内 `symbolname.cursorrules`
 - Import 规范：优先使用最具体、最小范围的导入入口，避免聚合入口打开无关资源文件；项目内自定义组件、工具类、业务模块必须导入到具体源码文件，例如用 `import { Logger } from '@ohos/common/src/main/ets/utils/Logger';`，不用 `import { Logger } from '@ohos/common'`；系统 SDK 或官方模块也优先选择官方文档支持的具体模块入口，只有官方要求时才使用包名聚合入口
+- 尺寸单位：ArkUI 布局链路默认以 vp 为基准；只有 Canvas、PixelMap、截图、屏幕物理尺寸、原生接口等明确要求像素时才进入 px。px/vp 转换必须优先使用当前组件或当前窗口的 `UIContext`（如 `this.getUIContext().px2vp()` / `vp2px()`），不要使用脱离 UI 实例的全局转换；从 `onAreaChange`、窗口、屏幕或第三方 SDK 得到的长度要先确认单位后再参与计算。
 
 ## 参考文档索引
 
@@ -121,11 +122,14 @@ export struct MyComponent {
 
 ### 命名规范
 
-- 组件名：PascalCase（`UserCard`、`NewsList`）
-- 变量/函数：camelCase（`userName`、`fetchData`）
-- 常量：UPPER_SNAKE_CASE（`MAX_COUNT`）
-- 文件名：与组件名一致（`UserCard.ets`）
-- 接口前缀：`I`（`IUserData`）
+- 标识符必须清晰表达意图，避免单字母、非标准缩写、中文拼音和容易产生歧义的命名。
+- 类名、枚举名、命名空间名、ArkUI 自定义组件名：UpperCamelCase（`UserCard`、`UserStatus`、`Base64Utils`）。
+- 类名通常使用名词或名词短语，避免动词，避免 `Data`、`Info` 等语义模糊的后缀。
+- 变量名、方法名、函数名、参数名：lowerCamelCase（`userName`、`fetchUserData`）。
+- 变量名通常使用名词或名词短语；函数/方法名通常使用动词或动词短语，如 `loadUser()`、`putUser()`、`findUser()`、`isEmpty()`、`hasNext()`。
+- 常量名、枚举值名：UPPER_SNAKE_CASE（`MAX_COUNT`、`USER_TYPE_ADMIN`）。
+- 布尔型局部变量或方法使用 `is`、`has`、`can`、`should` 等表达是非含义的前缀，避免 `isNotFound`、`isNoError` 这类否定命名。
+- 项目约定：文件名与页面/组件/类名一致（`UserCard.ets`），接口使用 `I` 前缀（`IUserData`）。
 
 ### 禁止事项
 
@@ -134,11 +138,11 @@ export struct MyComponent {
 - 禁止直接操作 DOM（ArkUI 无 DOM）
 - 禁止使用 `eval()`
 - 禁止在 UI 线程执行耗时操作，使用 `@ohos.taskpool` 或 Worker
-- 禁止使用 `Date.now()` / `new Date()` 获取时间戳，必须使用 `systemDateTime.getTime()`
+- 禁止使用 `Date.now()` / `new Date()` 做时间戳、耗时、超时、排序等时间计算，必须使用 `systemDateTime.getTime()`
 - 禁止不 catch Promise 返回值，所有返回 Promise 的函数调用必须 try-catch 或 .catch()
 - 禁止使用 `@Prop` 传递大数据对象（深拷贝性能差），改用 `@ObjectLink` 或拆分字段
 - 禁止使用对象字面量作为类型声明，必须显式声明 `interface` 或 `class`
 - 禁止向 SDK API 直接传未显式类型的 options/record 对象字面量，避免 `arkts-no-untyped-obj-literals`
-- 禁止使用 `enum`，使用 `const` 对象 + union type 替代
-- 禁止使用 `for...in`，使用 `Object.entries` 替代
+- 避免滥用 `enum`；如使用 `enum`，成员必须使用同类型的编译时表达式，且禁止声明合并；如需替代枚举，使用常量类或显式常量字段，不使用 `as const` 和字面量类型
+- 禁止使用 `for...in`；数组使用常规 `for` 循环，对象优先改为显式字段或数组化的键值结构后遍历
 - 禁止优先使用聚合入口导入；项目内自定义组件、工具类、业务模块等必须导入到具体文件路径，系统 SDK 或官方模块优先使用官方支持的具体模块入口

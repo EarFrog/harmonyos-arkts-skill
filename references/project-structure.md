@@ -133,26 +133,30 @@ entry → feature_user → common
 ```typescript
 // common 模块的 oh-package.json5
 {
-  "name": "common",
-  "version": "1.0.0",
-  "description": "公共共享模块",
-  "main": "index.ets",
-  "author": "",
-  "license": "ISC"
+    "name": "common",
+    "version": "1.0.0",
+    "description": "公共共享模块",
+    "main": "index.ets",
+    "author": "",
+    "license": "ISC"
 }
 
-// common/index.ets - 导出公共接口
-export * from './src/main/ets/components'
-export * from './src/main/ets/utils'
-export * from './src/main/ets/constants'
-
-// 在 feature 模块中使用
-import { Header, formatDate, ApiConstants } from 'common'
+// 避免从 common 聚合入口导入，按具体源码文件导入
+import { Header } from 'common/src/main/ets/components/common/Header'
+import { formatDate } from 'common/src/main/ets/utils/DateUtil'
+import { ApiConstants } from 'common/src/main/ets/constants/ApiConstants'
 ```
 
 ---
 
 ## 命名规范
+
+### 通用命名原则
+
+- 标识符应清晰表达意图，避免单字母、非标准缩写、中文拼音和容易产生歧义的命名。
+- 使用正确英文单词并符合英文语法，缩写只使用团队或业界通用缩写。
+- 类名通常使用名词或名词短语，避免动词，避免 `Data`、`Info` 等语义模糊的后缀。
+- 变量名通常使用名词或名词短语；函数/方法名通常使用动词或动词短语。
 
 ### 文件命名
 
@@ -161,43 +165,63 @@ import { Header, formatDate, ApiConstants } from 'common'
 | 页面 | PascalCase.ets | `Index.ets`、`UserProfile.ets` |
 | 组件 | PascalCase.ets | `UserCard.ets`、`LoadingSpinner.ets` |
 | 工具类 | PascalCase + Util.ets | `HttpUtil.ets`、`DateUtil.ets` |
-| 接口/模型 | I + PascalCase.ets | `IUser.ets`、`INews.ets` |
+| 接口/模型（项目约定） | I + PascalCase.ets | `IUser.ets`、`INews.ets` |
 | 常量 | PascalCase + Constants.ets | `AppConstants.ets` |
 | 服务 | PascalCase + Service.ets | `UserService.ets` |
 
 ### 代码命名
 
 ```typescript
-// 组件名：PascalCase
+// 类名/组件名/命名空间名：UpperCamelCase
 @Component
 struct UserCard { }
 
-// 变量/函数：camelCase
-let userName: string = ''
-function fetchUserData() { }
+class UserProfile { }
 
-// 常量：UPPER_SNAKE_CASE
+namespace Base64Utils { }
+
+// 如使用 enum，枚举名：UpperCamelCase，枚举值：UPPER_SNAKE_CASE
+enum UserType {
+    TEACHER = 0,
+    STUDENT = 1
+}
+
+// 变量/函数/方法/参数：lowerCamelCase
+let userName: string = ''
+function fetchUserData(userId: string) { }
+
+// 常量/枚举值：UPPER_SNAKE_CASE
 const MAX_RETRY_COUNT = 3
 const API_BASE_URL = 'https://api.example.com'
 
-// 接口：I 前缀
-interface IUserData {
-  id: number
-  name: string
+// 布尔变量/方法：is/has/can/should 等前缀，避免否定命名
+let isFound: boolean = true
+let hasNextPage: boolean = false
+function canRetry(): boolean {
+    return true
 }
 
-// 类型别名：PascalCase
-type UserStatus = 'active' | 'inactive'
+// 接口：I 前缀（项目约定）
+interface IUserData {
+    id: number
+    name: string
+}
 
-// 枚举替代：const 对象
-const UserStatus = {
-  ACTIVE: 'active',
-  INACTIVE: 'inactive'
-} as const
+// 枚举替代：常量类
+class UserStatus {
+    static readonly ACTIVE: string = 'active'
+    static readonly INACTIVE: string = 'inactive'
+}
 
-// 私有成员：_ 前缀（可选）
+// 私有成员：_ 前缀（项目可选约定）
 private _cache: Map<string, string> = new Map()
 ```
+
+### 函数和布尔命名
+
+- 函数/方法名优先使用动词或动词短语，如 `loadUser()`、`putUser()`、`findUser()`。
+- 返回布尔值的函数/方法使用 `is`、`has`、`can`、`should` 等前缀，如 `isEmpty()`、`hasNext()`。
+- 避免否定布尔命名，使用 `isFound` 替代 `isNotFound`，使用 `isError` 替代 `isNoError`。
 
 ---
 
@@ -231,33 +255,33 @@ resources/
 ```json
 // element/color.json
 {
-  "color": [
-    { "name": "primary", "value": "#007DFF" },
-    { "name": "secondary", "value": "#666666" },
-    { "name": "error", "value": "#FF0000" },
-    { "name": "background", "value": "#F5F5F5" },
-    { "name": "card_bg", "value": "#FFFFFF" }
-  ]
+    "color": [
+        { "name": "primary", "value": "#007DFF" },
+        { "name": "secondary", "value": "#666666" },
+        { "name": "error", "value": "#FF0000" },
+        { "name": "background", "value": "#F5F5F5" },
+        { "name": "card_bg", "value": "#FFFFFF" }
+    ]
 }
 
 // element/string.json
 {
-  "string": [
-    { "name": "app_name", "value": "我的应用" },
-    { "name": "login", "value": "登录" },
-    { "name": "logout", "value": "退出登录" }
-  ]
+    "string": [
+        { "name": "app_name", "value": "我的应用" },
+        { "name": "login", "value": "登录" },
+        { "name": "logout", "value": "退出登录" }
+    ]
 }
 
 // element/float.json
 {
-  "float": [
-    { "name": "font_size_small", "value": "12vp" },
-    { "name": "font_size_normal", "value": "14vp" },
-    { "name": "font_size_large", "value": "18vp" },
-    { "name": "padding_normal", "value": "16vp" },
-    { "name": "border_radius", "value": "8vp" }
-  ]
+    "float": [
+        { "name": "font_size_small", "value": "12vp" },
+        { "name": "font_size_normal", "value": "14vp" },
+        { "name": "font_size_large", "value": "18vp" },
+        { "name": "padding_normal", "value": "16vp" },
+        { "name": "border_radius", "value": "8vp" }
+    ]
 }
 ```
 
@@ -321,13 +345,13 @@ import { Header, Footer, UserCard } from '../components'
 ```json
 // main_pages.json
 {
-  "src": [
-    "pages/Index",
-    "pages/Home",
-    "pages/Profile",
-    "pages/Settings",
-    "pages/Login"
-  ]
+    "src": [
+        "pages/Index",
+        "pages/Home",
+        "pages/Profile",
+        "pages/Settings",
+        "pages/Login"
+    ]
 }
 ```
 

@@ -37,8 +37,8 @@ let userName: string = ''  // 不要忘记 let/const
 ```typescript
 // 检查类型定义
 interface IUser {
-  id: number
-  name: string
+    id: number
+    name: string
 }
 
 // 错误：传入类型不对
@@ -63,8 +63,8 @@ console.log(data?.age)
 
 // 或定义完整接口
 interface IPerson {
-  name: string
-  age?: number  // 可选属性
+    name: string
+    age?: number  // 可选属性
 }
 ```
 
@@ -80,11 +80,12 @@ let data: any = {}
 // ✅ 使用具体类型
 let data: Record<string, string> = {}
 
-// ✅ 使用 unknown + 类型守卫
-let data: unknown = {}
-if (typeof data === 'object' && data !== null) {
-  // ...
+// ✅ 已知结构时声明 interface
+interface IUserData {
+    id: number
+    name: string
 }
+let userData: IUserData = { id: 1, name: 'Tom' }
 ```
 
 ### ❌ `ArkTS:Cannot use 'enum'`
@@ -96,13 +97,12 @@ if (typeof data === 'object' && data !== null) {
 // ❌ 禁止
 enum Status { Loading, Success, Error }
 
-// ✅ 使用 const 对象 + union
-const Status = {
-  Loading: 'loading',
-  Success: 'success',
-  Error: 'error'
-} as const
-type Status = typeof Status[keyof typeof Status]
+// ✅ 使用常量类，避免 enum、字面量类型和 as const
+class Status {
+    static readonly Loading: string = 'loading'
+    static readonly Success: string = 'success'
+    static readonly Error: string = 'error'
+}
 ```
 
 ### ❌ `ArkTS:Cannot use 'for...in'`
@@ -114,8 +114,21 @@ type Status = typeof Status[keyof typeof Status]
 // ❌ 禁止
 for (let key in obj) { }
 
-// ✅ 使用 Object.entries
-for (let [key, value] of Object.entries(obj)) { }
+// ✅ 将动态对象改为数组化键值结构，再用常规 for 循环
+interface IKeyValue {
+    key: string
+    value: string
+}
+
+let items: IKeyValue[] = [
+    { key: 'name', value: 'Tom' },
+    { key: 'city', value: 'Shenzhen' }
+]
+
+for (let i = 0; i < items.length; i++) {
+    let item = items[i]
+    console.info(`${item.key}: ${item.value}`)
+}
 ```
 
 ---
@@ -136,7 +149,7 @@ let name = user?.profile?.name ?? '默认名称'
 
 // ✅ 提前判空
 if (user && user.profile) {
-  let name = user.profile.name
+    let name = user.profile.name
 }
 ```
 
@@ -151,10 +164,10 @@ let data = JSON.parse(jsonStr)
 
 // ✅ try-catch 包裹
 try {
-  let data = JSON.parse<IUserData>(jsonStr)
+    let data = JSON.parse<IUserData>(jsonStr)
 } catch (e) {
-  console.error('JSON parse failed:', e)
-  // 处理错误
+    console.error('JSON parse failed:', e)
+    // 处理错误
 }
 ```
 
@@ -171,11 +184,11 @@ try {
 ```json
 // module.json5
 {
-  "module": {
-    "requestPermissions": [
-      { "name": "ohos.permission.INTERNET" }
-    ]
-  }
+    "module": {
+        "requestPermissions": [
+            { "name": "ohos.permission.INTERNET" }
+        ]
+    }
 }
 ```
 
@@ -194,13 +207,13 @@ try {
 ```typescript
 // 常见问题：没有设置尺寸
 Column() {
-  Text('内容')
+    Text('内容')
 }
 // ❌ 没有设置尺寸，可能不可见
 
 // ✅ 设置明确尺寸
 Column() {
-  Text('内容')
+    Text('内容')
 }
 .width('100%')
 .height('100%')
@@ -221,12 +234,12 @@ this.list = [...this.list]
 // ✅ 方式2：使用 @Observed + @ObjectLink
 @Observed
 class Item {
-  name: string = ''
+    name: string = ''
 }
 
 @Component
 struct ItemComponent {
-  @ObjectLink item: Item  // 深层监听
+    @ObjectLink item: Item  // 深层监听
 }
 ```
 
@@ -238,14 +251,14 @@ struct ItemComponent {
 ```typescript
 // ✅ 使用 clip 裁剪
 Image($r('app.media.banner'))
-  .width('100%')
-  .height(200)
-  .clip(true)  // 裁剪超出部分
+    .width('100%')
+    .height(200)
+    .clip(true)  // 裁剪超出部分
 
 // ✅ 使用 layoutWeight
 Row() {
-  Text('标题').layoutWeight(1)  // 占据剩余空间
-  Button('操作').width(80)
+    Text('标题').layoutWeight(1)  // 占据剩余空间
+    Button('操作').width(80)
 }
 ```
 
@@ -255,8 +268,8 @@ Row() {
 ```typescript
 // 使用 expandSafeArea
 Column() {
-  TextInput()
-    .expandSafeArea([SafeAreaType.KEYBOARD])  // 键盘弹起时自动避让
+    TextInput()
+        .expandSafeArea([SafeAreaType.KEYBOARD])  // 键盘弹起时自动避让
 }
 ```
 
@@ -275,10 +288,10 @@ Column() {
 // ✅ 正确流程
 let httpRequest = http.createHttp()
 try {
-  const response = await httpRequest.request(url, options)
-  // 处理响应
+    const response = await httpRequest.request(url, options)
+    // 处理响应
 } finally {
-  httpRequest.destroy()  // 必须销毁
+    httpRequest.destroy()  // 必须销毁
 }
 ```
 
@@ -296,10 +309,10 @@ try {
 ```typescript
 // 在请求拦截器中统一处理
 if (response.code === 401) {
-  // 清除本地 Token
-  await prefUtil.remove('token')
-  // 跳转登录页
-  router.replaceUrl({ url: 'pages/Login' })
+    // 清除本地 Token
+    await prefUtil.remove('token')
+    // 跳转登录页
+    router.replaceUrl({ url: 'pages/Login' })
 }
 ```
 
@@ -318,8 +331,13 @@ if (response.code === 401) {
 // ❌ 直接修改对象属性
 this.user.name = '新名称'  // 不触发刷新
 
-// ✅ 整体替换对象
-this.user = { ...this.user, name: '新名称' }
+// ✅ 整体替换对象，显式拷贝字段
+const newUser: IUser = {
+    id: this.user.id,
+    name: '新名称',
+    avatar: this.user.avatar
+}
+this.user = newUser
 
 // ❌ 直接修改数组元素
 this.list[0].name = '新名称'
@@ -370,14 +388,14 @@ Child({ count: $count })
 ```json
 // module.json5 中声明权限
 {
-  "module": {
-    "requestPermissions": [
-      { "name": "ohos.permission.INTERNET" },
-      { "name": "ohos.permission.GET_WIFI_INFO" },
-      { "name": "ohos.permission.APPROXIMATELY_LOCATION" },
-      { "name": "ohos.permission.LOCATION" }
-    ]
-  }
+    "module": {
+        "requestPermissions": [
+            { "name": "ohos.permission.INTERNET" },
+            { "name": "ohos.permission.GET_WIFI_INFO" },
+            { "name": "ohos.permission.APPROXIMATELY_LOCATION" },
+            { "name": "ohos.permission.LOCATION" }
+        ]
+    }
 }
 ```
 
@@ -390,22 +408,22 @@ Child({ count: $count })
 import { abilityAccessCtrl, bundleManager, Permissions } from '@kit.AbilityKit'
 
 async function requestPermission(context: Context, permission: Permissions): Promise<boolean> {
-  const atManager = abilityAccessCtrl.createAtManager()
-  try {
-    const result = await atManager.requestPermissionsFromUser(context, [permission])
-    return result.authResults[0] === 0  // 0 = 授权成功
-  } catch (err) {
-    console.error(`请求权限失败: ${(err as Error).message}`)
-    return false
-  }
+    const atManager = abilityAccessCtrl.createAtManager()
+    try {
+        const result = await atManager.requestPermissionsFromUser(context, [permission])
+        return result.authResults[0] === 0  // 0 = 授权成功
+    } catch (err) {
+        console.error(`请求权限失败: ${(err as Error).message}`)
+        return false
+    }
 }
 
 // 使用
 const granted = await requestPermission(this.context, 'ohos.permission.LOCATION')
 if (granted) {
-  // 执行需要权限的操作
+    // 执行需要权限的操作
 } else {
-  promptAction.showToast({ message: '需要位置权限才能使用此功能' })
+    promptAction.showToast({ message: '需要位置权限才能使用此功能' })
 }
 ```
 
@@ -434,11 +452,11 @@ if (granted) {
 ```typescript
 // ✅ 使用 LazyForEach
 List() {
-  LazyForEach(this.dataSource, (item: IItem) => {
-    ListItem() {
-      ItemComponent({ item })
-    }
-  })
+    LazyForEach(this.dataSource, (item: IItem) => {
+        ListItem() {
+            ItemComponent({ item })
+        }
+    })
 }
 .cachedCount(5)  // 缓存屏幕外 item
 
@@ -454,18 +472,18 @@ List() {
 ```typescript
 // ✅ 分步加载
 aboutToAppear() {
-  this.loadEssentialData()  // 先加载必要数据
+    this.loadEssentialData()  // 先加载必要数据
 }
 
 onPageShow() {
-  this.loadSecondaryData()  // 页面显示后加载次要数据
+    this.loadSecondaryData()  // 页面显示后加载次要数据
 }
 
 // ✅ 使用骨架屏
 if (this.loading) {
-  SkeletonScreen()
+    SkeletonScreen()
 } else {
-  RealContent()
+    RealContent()
 }
 ```
 
@@ -477,18 +495,18 @@ if (this.loading) {
 ```typescript
 @Component
 struct MyComponent {
-  private timer: number = -1
+    private timer: number = -1
 
-  aboutToAppear() {
-    this.timer = setInterval(() => { }, 1000)
-  }
-
-  aboutToDisappear() {
-    // ✅ 必须清理
-    if (this.timer !== -1) {
-      clearInterval(this.timer)
+    aboutToAppear() {
+        this.timer = setInterval(() => { }, 1000)
     }
-  }
+
+    aboutToDisappear() {
+        // ✅ 必须清理
+        if (this.timer !== -1) {
+            clearInterval(this.timer)
+        }
+    }
 }
 ```
 

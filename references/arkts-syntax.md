@@ -87,6 +87,7 @@ struct Child {
     Text(this.title)
   }
 }
+```
 
 // ⚠️ 性能警告：@Prop 会进行深拷贝
 // 对于大数据对象，建议使用 @ObjectLink 或拆分属性

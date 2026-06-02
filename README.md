@@ -46,11 +46,12 @@ git clone https://github.com/EarFrog/harmonyos-arkts-skill.git harmonyos-arkts
 ```
 references/
 ├── arkts-syntax.md       # ArkTS 语法与装饰器速查
-├── component-patterns.md # 组件设计模式
-├── http-client.md        # HTTP 请求封装
-├── navigation.md         # 页面路由指南
-├── storage-guide.md      # 本地存储方案
-└── project-structure.md  # 项目结构规范
+├── ui-layout.md          # UI 布局、动画、手势交互
+├── navigation-router.md  # 页面路由与导航
+├── network-http.md       # HTTP 网络请求、WebSocket
+├── storage.md            # 本地存储方案
+├── project-structure.md  # 项目结构规范
+└── troubleshooting.md    # 常见错误排查
 ```
 
 ## 使用示例
@@ -59,17 +60,17 @@ references/
 
 **问题**：如何封装一个带拦截器的 HTTP 客户端？
 
-**解答**：参考 `references/http-client.md`，使用 `HttpClient` 类模板：
+**解答**：参考 `references/network-http.md`，使用 `HttpClient` 类模板：
 
 ```typescript
 import { http } from '@kit.NetworkKit'
 
 class HttpClient {
-  private interceptors: Interceptor[] = []
-  
-  request<T>(config: RequestConfig): Promise<T> {
-    // 请求拦截 → 发起请求 → 响应拦截 → 返回结果
-  }
+    private interceptors: Interceptor[] = []
+
+    request<T>(config: RequestConfig): Promise<T> {
+        // 请求拦截 → 发起请求 → 响应拦截 → 返回结果
+    }
 }
 ```
 
@@ -82,13 +83,13 @@ class HttpClient {
 ```typescript
 @Observed
 class User {
-  name: string = ''
-  data: Object[] = []
+    name: string = ''
+    tags: string[] = []
 }
 
 @Component
 struct Child {
-  @ObjectLink user: User  // 共享引用，无拷贝开销
+    @ObjectLink user: User  // 共享引用，无拷贝开销
 }
 ```
 
@@ -98,7 +99,7 @@ struct Child {
 
 ### 时间计算
 
-使用 `systemDateTime.getTime()` 替代 `Date.now()`，避免用户修改系统时间导致计算错误：
+涉及时间戳、耗时、超时、排序等时间计算时，使用 `systemDateTime.getTime()` 替代 `Date.now()` / `new Date()`：
 
 ```typescript
 import { systemDateTime } from '@kit.BasicServicesKit'
@@ -134,5 +135,5 @@ const timestamp = systemDateTime.getTime()
 
 ---
 
-**维护者**: [@EarFrog](https://github.com/EarFrog)  
+**维护者**: [@EarFrog](https://github.com/EarFrog)
 如有问题，欢迎通过 GitHub Issues 交流
