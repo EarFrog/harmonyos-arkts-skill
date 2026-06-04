@@ -11,9 +11,6 @@ description: |
   覆盖场景：生成 ArkTS 组件代码、页面路由、HTTP 请求封装、本地存储、
   UI 布局、项目结构规范、常见错误排查、API 速查、编程规范、
   编译校验、icon 使用规范、ArkTS Lint、ArkUI 性能最佳实践。
-metadata:
-  openclaw:
-    emoji: "🦋"
 ---
 
 # HarmonyOS ArkTS 开发助手
