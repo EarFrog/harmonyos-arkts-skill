@@ -1,4 +1,4 @@
 interface:
-  display_name: "HarmonyOS ArkTS"
-  short_description: "HarmonyOS NEXT ArkTS 与 ArkUI 开发助手"
-  default_prompt: "Use $harmonyos-arkts to generate or review HarmonyOS NEXT ArkTS and ArkUI code."
+  display_name: "HarmonyOS NEXT Development"
+  short_description: "ArkTS、ArkUI、Android 迁移与 Native/NDK 开发助手"
+  default_prompt: "Use $harmonyos-arkts to implement or review a HarmonyOS NEXT ArkTS, ArkUI, or Native/NDK task."

@@ -1,12 +1,12 @@
-# HarmonyOS ArkTS Skill
+# HarmonyOS NEXT Development Skill
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-面向纯血鸿蒙（HarmonyOS NEXT）应用开发的 AI Skill。
+面向纯血鸿蒙（HarmonyOS NEXT）ArkTS、ArkUI 与 Native/NDK 应用开发的 AI Skill。
 
 ## 简介
 
-本 Skill 为 ArkTS + ArkUI 开发者提供一站式开发辅助，涵盖组件设计、网络请求、状态管理、性能优化等核心场景的最佳实践与代码模板。
+本 Skill 提供统一的 HarmonyOS NEXT 开发入口，覆盖 ArkTS/ArkUI 应用开发、Android 迁移，以及 Node-API、CMake、XComponent、Native Drawing、EGL/GLES 等 Native/NDK 工程场景。
 
 ## 功能特性
 
@@ -20,10 +20,16 @@
 | **项目规范** | 目录结构、模块划分、代码规范 |
 | **问题排查** | 常见错误诊断、调试技巧、解决方案 |
 | **API 速查** | 装饰器、工具函数、系统 API 快速参考 |
+| **Android 迁移** | Android 项目分析、迁移计划、资源转换、UI 映射、验证流程 |
+| **Native/NDK** | Node-API 契约、CMake/ABI、生命周期、线程与内存安全 |
+| **Native 渲染** | XComponent、NativeWindow、Native Drawing、EGL/GLES 与画布性能 |
+| **静态审计** | 检查 CMake、注册、ArkTS import、类型声明和 Native 高风险路径 |
 
 ## 适用对象
 
 - 鸿蒙应用开发者（个人/团队）
+- Android 应用迁移到 HarmonyOS NEXT 的开发者
+- HarmonyOS Native/NDK、图形和高性能模块开发者
 - 学习 ArkTS 与鸿蒙开发的初学者
 - 需要快速查阅 API 与最佳实践的开发者
 
@@ -51,8 +57,35 @@ references/
 ├── network-http.md       # HTTP 网络请求、WebSocket
 ├── storage.md            # 本地存储方案
 ├── project-structure.md  # 项目结构规范
-└── troubleshooting.md    # 常见错误排查
+├── troubleshooting.md    # ArkTS、ArkUI 与应用常见错误排查
+├── android-migration.md           # Android 到 HarmonyOS 迁移流程
+├── android-ui-mapping.md          # Android UI/XML 到 ArkUI 映射
+├── android-resource-migration.md        # Android 资源迁移
+├── native-engineering-lessons.md        # Native 工程审查入口
+├── native-napi-process.md               # Node-API 注册与契约
+├── native-arkts-interop.md              # ArkTS 与 Native 互操作
+├── native-safety.md                     # 生命周期、线程与内存安全
+├── native-cmake-build.md                # CMake、Hvigor、ABI 与三方库
+├── native-debugging.md                  # 编译、加载、崩溃与图形排障
+├── native-canvas-performance.md         # 画布和手写性能
+├── native-architecture-patterns.md      # Native 状态与资源架构
+├── native-rendering-architecture.md     # Native 渲染架构
+├── native-persistence-export-scheduling.md # 持久化、导出与任务调度
+└── native-official-node-api-guide.md    # 官方资料与版本核对
+
+scripts/
+└── audit_harmony_native.py  # 只读 Native 静态审计
 ```
+
+## Native 静态审计
+
+```bash
+python3 scripts/audit_harmony_native.py /path/to/project
+python3 scripts/audit_harmony_native.py /path/to/project --module drawing --strict
+python3 scripts/audit_harmony_native.py /path/to/project --json
+```
+
+脚本只提供静态证据，不能替代项目构建、动态注册检查和目标设备验证。
 
 ## 使用示例
 
