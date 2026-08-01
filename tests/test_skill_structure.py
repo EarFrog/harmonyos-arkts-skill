@@ -75,6 +75,31 @@ class SkillStructureTest(unittest.TestCase):
             skill_text,
         )
 
+    def test_declares_official_developer_knowledge_mcp(self) -> None:
+        metadata = (SKILL_ROOT / "agents" / "openai.yaml").read_text(
+            encoding="utf-8"
+        )
+
+        expected_fields = {
+            'type: "mcp"',
+            'value: "harmonyos_developer_knowledge"',
+            'transport: "streamable_http"',
+            'url: "https://connect-api.cloud.huawei.com/api/developerknowledge/mcp"',
+        }
+        missing_fields = [
+            field for field in sorted(expected_fields) if field not in metadata
+        ]
+
+        self.assertIn("dependencies:\n  tools:", metadata)
+        self.assertEqual([], missing_fields)
+
+    def test_skill_explains_mcp_decline_fallback(self) -> None:
+        skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("## 官方开发者知识 MCP", skill_text)
+        self.assertIn("不要在普通开发任务中重复询问", skill_text)
+        self.assertIn("继续使用目标仓库", skill_text)
+
     def test_local_markdown_links_resolve(self) -> None:
         markdown_paths = [
             SKILL_ROOT / "README.md",

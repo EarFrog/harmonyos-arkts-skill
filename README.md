@@ -47,6 +47,16 @@ git clone https://github.com/EarFrog/harmonyos-arkts-skill.git harmonyos-arkts
 
 在与 AI 对话中，AI 将自动引用本 Skill 的文档来回答鸿蒙开发相关问题。
 
+### 可选：开发者知识 MCP
+
+本 Skill 在 `agents/openai.yaml` 中声明了华为官方“开发者知识 MCP”依赖。支持 skill MCP 依赖安装的 Codex 版本会在安装或更新后发现该 MCP 尚未配置时询问是否配置：
+
+- 选择配置：由 Codex 添加远程 MCP 服务。
+- 选择不配置：不写入 MCP 配置，Skill 仍可正常使用。
+- 已配置：不重复配置。
+
+远程服务地址：`https://connect-api.cloud.huawei.com/api/developerknowledge/mcp`。其他 AI 客户端可参考[华为官方接入文档](https://developer.huawei.com/consumer/cn/doc/start/hosknowledgemcp-0000002664603963)手动配置。
+
 ## 文档目录
 
 ```

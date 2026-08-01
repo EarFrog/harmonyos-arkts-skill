@@ -2,3 +2,11 @@ interface:
   display_name: "HarmonyOS NEXT Development"
   short_description: "ArkTS、ArkUI、Android 迁移与 Native/NDK 开发助手"
   default_prompt: "Use $harmonyos-arkts to implement or review a HarmonyOS NEXT ArkTS, ArkUI, or Native/NDK task."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "harmonyos_developer_knowledge"
+      description: "鸿蒙开发者知识 MCP（华为官方开发文档）"
+      transport: "streamable_http"
+      url: "https://connect-api.cloud.huawei.com/api/developerknowledge/mcp"
