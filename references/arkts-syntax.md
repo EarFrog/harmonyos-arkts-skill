@@ -1124,8 +1124,9 @@ struct Parent {
 
 ### 1. 编译和 icon 使用规则
 
-1. 每次agent修改完代码，都需要执行编译命令：`hvigorw assembleHap`。如果有编译错误，继续修复编译错问题，直到没有。
-2. 如果需要图标，优先使用 `symbolname.cursorrules` 文件中的 icon
+1. 每次 agent 修改完鸿蒙代码，先读取仓库 CI、脚本和当前 Hvigor 任务列表，再执行项目实际提供的 lint、test 和应用构建任务；不要假定一定存在 `hvigorw assembleHap`。如果有编译错误，只修复本次代码变更引入的问题，直到通过或明确说明阻塞原因。
+2. 修改鸿蒙代码后的编译校验禁止修改编译环境：不要为了通过编译而修改 DevEco/SDK/JDK/Node/ohpm/hvigor、`local.properties`、签名配置、PATH 或本机工具链；若失败原因属于环境、依赖安装、签名或本机路径问题，停止修改并报告用户处理。
+3. 如果需要图标，优先使用 `symbolname.cursorrules` 文件中的 icon。
 
 ### 2. 声明式语法规范
 
